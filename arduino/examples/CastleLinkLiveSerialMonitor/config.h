@@ -24,7 +24,13 @@
 
 /****************** CONFIGS ***********************/
 #define SERIAL_BAUD_RATE            38400
-#define THROTTLE_IN_PIN                12
 #define LED                            13
 
+/* 
+ * you can safely change pin used to read throttle signal from
+ * external equipment provided that you don't use any of the 
+ * external interrupts pin (arduino pins 2 and 3) or the led
+ * pin (arduino pin 13).
+ */
+#define THROTTLE_IN_PIN                 7
 
