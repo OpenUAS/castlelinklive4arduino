@@ -1,3 +1,5 @@
+/* SVN $Id$ */
+
 /*****************************************************************************
  *  CastleLinkLive Library for Arduino - CastleLinkLive_config.h
  *  Copyright (C) 2012  Matteo Piscitelli

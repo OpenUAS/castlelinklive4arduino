@@ -1,3 +1,5 @@
+/* SVN $Id$ */
+
 /*****************************************************************************
  *  CastleLinkLiveSerialMonitor
  *  Copyright (C) 2012  Matteo Piscitelli
