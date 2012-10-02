@@ -1,7 +1,5 @@
-/* SVN: $Id$ */
-
 /*****************************************************************************
- *  CommLayerLib - DataLogger.java
+ *  CastleLinkLiveMonitor for windowed systems - DataLogger.java
  *  Copyright (C) 2012  Matteo Piscitelli
  *  E-mail: matteo@picciux.it
  *
@@ -20,6 +18,8 @@
  *
  *  For further info, check http://code.google.com/p/java-comm-layer/
  *
+ *  SVN: $Id$
+ *  
  *****************************************************************************/
 
 package it.picciux.castle.linklive.win;
