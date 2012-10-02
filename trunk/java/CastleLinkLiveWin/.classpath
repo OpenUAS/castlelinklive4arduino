@@ -2,11 +2,11 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/CastleLinkLiveLib"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/CommLayerLib"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/CommLayerLibWin"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.eclipse.swt"/>
-	<classpathentry kind="lib" path="C:/Users/00688263/Documents/java/RXTX/2.1-7-R2/RXTXcomm.jar">
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/CastleLinkLiveLib"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/CommLayerLib"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/CommLayerLibWin"/>
+	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/org.eclipse.swt"/>
+	<classpathentry exported="true" kind="lib" path="C:/Users/00688263/Documents/java/RXTX/2.1-7-R2/RXTXcomm.jar">
 		<attributes>
 			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/00688263/Documents/java/RXTX/2.1-7-R2"/>
 		</attributes>

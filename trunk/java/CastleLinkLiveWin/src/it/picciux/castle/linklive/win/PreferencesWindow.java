@@ -25,6 +25,9 @@
 package it.picciux.castle.linklive.win;
 
 
+import java.io.File;
+import java.io.IOException;
+
 import it.picciux.castle.linklive.CastleLinkLive;
 import it.picciux.castle.linklive.win.CastleLinkLiveMonitor.AppSettings;
 import it.picciux.commlayer.CommLayer;
@@ -38,6 +41,7 @@ import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Scale;
@@ -86,6 +90,36 @@ public class PreferencesWindow {
 				tempSettings.port = portCombo.getItem(portCombo.getSelectionIndex());
 			} else if (e.widget == portText) {
 				tempSettings.port = portText.getText();
+			} else if (e.widget == logNoneButton) {
+				logNoneButton.setSelection(true);
+				logRawButton.setSelection(false);
+				logHRButton.setSelection(false);
+				tempSettings.logType = CastleLinkLiveMonitor.LOG_NONE;
+				setLogControls(tempSettings.logType);
+			} else if (e.widget == logRawButton) {
+				logNoneButton.setSelection(false);
+				logRawButton.setSelection(true);
+				logHRButton.setSelection(false);
+				tempSettings.logType = CastleLinkLiveMonitor.LOG_RAW;
+				setLogControls(tempSettings.logType);
+			} else if (e.widget == logHRButton) {
+				logNoneButton.setSelection(false);
+				logRawButton.setSelection(false);
+				logHRButton.setSelection(true);
+				tempSettings.logType = CastleLinkLiveMonitor.LOG_HR;
+				setLogControls(tempSettings.logType);
+			} else if (e.widget == logBrowseButton) {
+				FileDialog d = new FileDialog(w, SWT.SAVE);
+				File lf = new File(logPath.getText());
+				try {
+					d.setFileName(lf.getCanonicalPath());
+				} catch (IOException e1) {
+				}
+				String f = d.open();
+				if (f != null) {
+					tempSettings.logPath = f;
+					logPath.setText(f);
+				}
 			} else if (e.widget == btnOK) {
 				saveSettings();
 				w.dispose();
@@ -154,6 +188,13 @@ public class PreferencesWindow {
 	
 	private Button btnOK;
 	private Button btnCancel;
+	
+	private Button logNoneButton;
+	private Button logRawButton;
+	private Button logHRButton;
+	
+	private Text logPath;
+	private Button logBrowseButton;
 	
 	private EventListener listener = new EventListener();
 	private ScanListener scanListener = new ScanListener();
@@ -274,6 +315,34 @@ public class PreferencesWindow {
 			portText.addSelectionListener(listener);
 		}
 		
+		Group logGroup = new Group(comGroup, SWT.NONE);
+		logGroup.setLayout(new RowLayout(SWT.VERTICAL));
+		logGroup.setText("Data logging");
+		
+		logNoneButton = new Button(logGroup, SWT.RADIO);
+		logNoneButton.setText("Disabled");
+		logNoneButton.setSelection(settings.logType == CastleLinkLiveMonitor.LOG_NONE);
+		logNoneButton.addSelectionListener(listener);
+		
+		logRawButton = new Button(logGroup, SWT.RADIO);
+		logRawButton.setText("Raw data");
+		logRawButton.setSelection(settings.logType == CastleLinkLiveMonitor.LOG_RAW);
+		logRawButton.addSelectionListener(listener);
+		
+		logHRButton = new Button(logGroup, SWT.RADIO);
+		logHRButton.setText("Human readable");
+		logHRButton.setSelection(settings.logType == CastleLinkLiveMonitor.LOG_HR);
+		logHRButton.addSelectionListener(listener);
+		
+		logPath = new Text(logGroup, SWT.BORDER);
+		logPath.setText(settings.logPath);
+		
+		logBrowseButton = new Button(logGroup, SWT.PUSH);
+		logBrowseButton.setText("Browse");
+		logBrowseButton.addSelectionListener(listener);
+		
+		setLogControls(settings.logType);
+		
 		btnOK = new Button(buttons, SWT.PUSH);
 		btnOK.setText("OK");
 		btnOK.addSelectionListener(listener);
@@ -283,6 +352,11 @@ public class PreferencesWindow {
 		btnCancel.addSelectionListener(listener);
 	}
 	
+	private void setLogControls(int logType) {
+		logPath.setEnabled(logType != CastleLinkLiveMonitor.LOG_NONE);
+		logBrowseButton.setEnabled(logType != CastleLinkLiveMonitor.LOG_NONE);
+	}
+	
 	private void saveSettings() {
 		settings.port = tempSettings.port;
 		settings.nESC = tempSettings.nESC;
@@ -290,6 +364,8 @@ public class PreferencesWindow {
 		settings.throttleMax = tempSettings.throttleMax;
 		settings.throttleMode = tempSettings.throttleMode;
 		settings.motorPoles = tempSettings.motorPoles;
+		settings.logType = tempSettings.logType;
+		settings.logPath = logPath.getText();
 	}
 	
 	public void start() {
