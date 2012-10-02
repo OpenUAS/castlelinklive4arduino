@@ -1,5 +1,3 @@
-/* SVN: $Id$ */
-
 /*****************************************************************************
  *  CastleLinkLive library - CastleLinkLive.java
  *  Copyright (C) 2012  Matteo Piscitelli
@@ -20,6 +18,8 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
+ *  SVN: $Id$
+ *  
  *****************************************************************************/
 
 /*****************************************************************************
