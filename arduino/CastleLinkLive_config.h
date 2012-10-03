@@ -76,4 +76,19 @@
 //#define THROTTLE_MIN 0.001f   // 1ms min
 //#define THROTTLE_MAX 0.002f   // 2ms max
 
+/*
+ * Since castle pins are externally pulled-up as required by castle link live spec,
+ * we need to keep disabled internal pullups when pins are used as inputs. We have two choices:
+ * 1) globally disable all port pullups
+ * 2) do a two-step process on every switch: 
+        - from OUTPUT to INPUT: since pins are HIGH when switching them to input mode, immediately
+                                write them LOW to disable the pullups
+        - from INPUT to OUTPUT: switching the pin directly to output would cause an output LOW
+                                towards the ESC(s), which we don't want; so write them HIGH before, temporarily
+                                enabling pullups, then switch them to output, obtaining them to stay HIGH.
+                                
+ * You can choose option 1 by keeping following define un-commented, otherwise option 2 will be enforced
+ */
+#define DISABLE_ALL_PULLUPS
+
 #endif //def CastleLinkLive_config_h
