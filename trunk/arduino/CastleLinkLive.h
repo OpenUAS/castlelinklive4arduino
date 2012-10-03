@@ -2,8 +2,8 @@
 
 /*****************************************************************************
  *  CastleLinkLive Library for Arduino - CastleLinkLive.h
- *  Copyright (C) 2012  Matteo Piscitelli
- *  E-mail: matteo@picciux.it
+ *  Copyright (C) 2012  Matteo Piscitelli (matteo@picciux.it)
+ *  Rewritten low-level from a high-level work of Capaverde at rcgroups.com
  * 
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
