@@ -6,10 +6,5 @@
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/CommLayerLib"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/CommLayerLibWin"/>
 	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/org.eclipse.swt"/>
-	<classpathentry exported="true" kind="lib" path="C:/Users/00688263/Documents/java/RXTX/2.1-7-R2/RXTXcomm.jar">
-		<attributes>
-			<attribute name="org.eclipse.jdt.launching.CLASSPATH_ATTR_LIBRARY_PATH_ENTRY" value="C:/Users/00688263/Documents/java/RXTX/2.1-7-R2"/>
-		</attributes>
-	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
