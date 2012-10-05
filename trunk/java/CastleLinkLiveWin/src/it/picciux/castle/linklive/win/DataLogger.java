@@ -43,12 +43,12 @@ public class DataLogger extends it.picciux.commlayer.DataLogger {
 
 	@Override
 	protected OutputStream openStream() {
-		if (logPath.length() == 0) return null;
+		if (logURL.length() == 0) return null;
 		
 		FileOutputStream fos;
 		
 		try {
-			fos = new FileOutputStream(logPath);
+			fos = new FileOutputStream(logURL);
 		} catch (FileNotFoundException e) {
 			return null;
 		}
@@ -77,5 +77,10 @@ public class DataLogger extends it.picciux.commlayer.DataLogger {
 				Double.toString(CastleLinkLiveMonitor.round(esc.getBECcurrent(), 3)) + "\r\n";
 				
 		writeText(line);
+	}
+
+	@Override
+	protected void setThreadData() {
+		this.setName("Data Logger");
 	}
 }

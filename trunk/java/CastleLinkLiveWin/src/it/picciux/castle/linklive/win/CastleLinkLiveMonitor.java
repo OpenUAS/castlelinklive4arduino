@@ -102,6 +102,11 @@ public class CastleLinkLiveMonitor {
 			
 			return true;
 		}
+
+		@Override
+		public void setThreadData() {
+			setName("CLL Serial Reader Thread");
+		}
 		
 	}
 
