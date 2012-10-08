@@ -86,6 +86,7 @@ public class CastleLinkLiveMonitor {
 			if (n > 0) {
 				for (int i = 0; i < n; i++) {
 					try {
+						//System.out.println( "0x" +  Integer.toString( ((int) data[i]) & 0xFF, 16));
 						cll.putData(((int) data[i]) & 0xFF);
 					} catch (InvalidDataException e) {
 						dataErrors++;
@@ -186,6 +187,7 @@ public class CastleLinkLiveMonitor {
 	
 	
 	//Connection and communication elements
+	public static final int BAUD_RATE = 38400;
 	private static AppSettings appSettings = new AppSettings();
 	private static DataReader reader;
 	private static SerialLayer layer;
@@ -547,7 +549,7 @@ public class CastleLinkLiveMonitor {
 		layer = new SerialLayer(reader);
 
 		SerialLayer.Settings settings = layer.getSettings();
-		settings.setBaudRate(38400);
+		settings.setBaudRate(BAUD_RATE);
 		settings.setDataBits(SerialLayer.Settings.DATABITS_8);
 		settings.setParity(SerialLayer.Settings.PARITY_NONE);
 		settings.setStopBits(SerialLayer.Settings.STOPBITS_1);
