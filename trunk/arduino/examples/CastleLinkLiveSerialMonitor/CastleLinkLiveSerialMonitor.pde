@@ -87,7 +87,7 @@ void processCommand(COMMAND *c) {
       break;
 
     case CMD_HELLO:
-      if (state == STATUS_HELLO) {
+      if (state < STATUS_ARMED) {
         state = STATUS_CONF;
         reply(1);
       } else
