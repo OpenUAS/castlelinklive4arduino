@@ -24,8 +24,6 @@
 
 package it.picciux.castle.linklive.win;
 
-import java.io.IOException;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -47,70 +45,12 @@ import it.picciux.castle.linklive.CastleLinkLive;
 import it.picciux.castle.linklive.ICastleLinkLiveEvent;
 import it.picciux.castle.linklive.InvalidDataException;
 import it.picciux.castle.linklive.InvalidThrottleLimitException;
-import it.picciux.commlayer.CommLayer;
 import it.picciux.commlayer.CommLayerException;
-import it.picciux.commlayer.DataReader;
 import it.picciux.commlayer.ICommEventListener;
+import it.picciux.commlayer.win.net.NetworkDataBroadcaster;
 import it.picciux.commlayer.win.serial.SerialLayer;
 
 public class CastleLinkLiveMonitor {
-	private static class Reader extends DataReader {
-		private CastleLinkLive cll;
-		
-		public Reader(CastleLinkLive cll) {
-			super();
-			this.cll = cll;
-		}
-		
-		@Override
-		protected void delay() {
-		}
-
-		@Override
-		protected boolean readData() {
-			//int data;
-			byte[] data = new byte[40];
-			int n = 0;
-			
-			try {
-				n = in.read(data);
-			} catch (IOException e) {
-				return false;
-			}
-			
-			if (n == -1) {
-				disconnectCause = CommLayer.EOF;
-				return false;
-			}
-			
-			if (n > 0) {
-				for (int i = 0; i < n; i++) {
-					try {
-						//System.out.println( "0x" +  Integer.toString( ((int) data[i]) & 0xFF, 16));
-						cll.putData(((int) data[i]) & 0xFF);
-					} catch (InvalidDataException e) {
-						dataErrors++;
-						updateDataErrors();
-					}
-				}
-				
-				if (dataLoggers.size() > 0) {
-					for (int i = 0; i < dataLoggers.size(); i++) {
-						((DataLogger) dataLoggers.get(i)).writeData(data, 0, n);
-					}
-				}
-			} 
-			
-			return true;
-		}
-
-		@Override
-		public void setThreadData() {
-			setName("CLL Serial Reader Thread");
-		}
-		
-	}
-
 	
 	public static class AppSettings implements Cloneable {
 		public String port;
@@ -121,6 +61,10 @@ public class CastleLinkLiveMonitor {
 		int motorPoles = 2;
 		int logType = LOG_NONE;
 		String logPath = "";
+		
+		//TODO implement UI for network broadcast settings
+		int hrBroadcastPort = 8888; 
+		int rawBroadcastPort = 8889;
 
 		@Override
 		protected AppSettings clone() throws CloneNotSupportedException {
@@ -175,24 +119,24 @@ public class CastleLinkLiveMonitor {
 	
 	private static final String DATA_ERRORS_TITLE = "Data errors: ";
 	
-	private static final int[] THROTTLE_PRESENT_COLOR = new int[] { 0, 255, 0 };
-	private static final int[] THROTTLE_NOT_PRESENT_COLOR = new int[] { 255, 0, 0 };
-	
 	public static final int LOG_NONE = 0;
 	public static final int LOG_RAW = 1;
 	public static final int LOG_HR = 2;
 	
 	private static Color OKColor;
+	private static Color ProgressColor;
 	private static Color KOColor;
 	
 	
 	//Connection and communication elements
 	public static final int BAUD_RATE = 38400;
 	private static AppSettings appSettings = new AppSettings();
-	private static DataReader reader;
+	//private static DataReader reader;
 	private static SerialLayer layer;
 	private static CastleLinkLive cll;
 	private static DataLogger dataLogger = null;
+	private static EscBroadcaster hrNetBroadcaster = null;
+	private static NetworkDataBroadcaster rawNetBroacaster = null;
 	private static int dataErrors = 0;
 
 	
@@ -432,6 +376,23 @@ public class CastleLinkLiveMonitor {
 		
 		layer.getSettings().setPort(appSettings.port);
 		
+		//reader = new Reader(cll);
+		//layer.setDataReader(reader);
+		
+		if (appSettings.logType != LOG_NONE && appSettings.logPath.length() > 0) 
+			dataLogger = new DataLogger(appSettings.logPath);
+		
+		if (appSettings.logType == LOG_RAW && dataLogger != null)
+			layer.addDataLogger(dataLogger);
+		
+		if (appSettings.hrBroadcastPort > 0)
+			hrNetBroadcaster = new EscBroadcaster(appSettings.hrBroadcastPort, "HR broadcaster");
+		
+		if (appSettings.rawBroadcastPort > 0) {
+			rawNetBroacaster = new NetworkDataBroadcaster(appSettings.rawBroadcastPort, "RAW broadcaster");
+			layer.addDataLogger(rawNetBroacaster);
+		}
+		
 		try {
 			layer.connect();
 		} catch (CommLayerException ex) {
@@ -449,17 +410,11 @@ public class CastleLinkLiveMonitor {
 
 		display = Display.getDefault();
 		
-		OKColor = new Color(
-				display,
-				THROTTLE_PRESENT_COLOR[0],
-				THROTTLE_PRESENT_COLOR[1], 
-				THROTTLE_PRESENT_COLOR[2]);
+		OKColor = new Color(display, 0, 255, 0);
+		ProgressColor = new Color(display, 255, 255, 0);
+		KOColor = new Color(display, 255, 0, 0);
 		
-		KOColor = new Color(
-				display,
-				THROTTLE_NOT_PRESENT_COLOR[0],
-				THROTTLE_NOT_PRESENT_COLOR[1], 
-				THROTTLE_NOT_PRESENT_COLOR[2]);
+		
 		
 		mainWin = new Shell(display, SWT.SHELL_TRIM);
 		
@@ -499,6 +454,7 @@ public class CastleLinkLiveMonitor {
 				});
 				
 				if (appSettings.logType == LOG_HR && dataLogger != null) dataLogger.logESC(esc);
+				if ((appSettings.hrBroadcastPort > 0) && (hrNetBroadcaster != null)) hrNetBroadcaster.logESC(esc);
 			}
 			
 			@Override
@@ -511,11 +467,16 @@ public class CastleLinkLiveMonitor {
 					log = "CastleLinkLive is connected!";
 					if (appSettings.logType == LOG_HR && dataLogger != null)
 						dataLogger.openLog();
+					
+					if (appSettings.hrBroadcastPort > 0 && hrNetBroadcaster != null) hrNetBroadcaster.openLog();
 				} else {
 					c = KOColor;
 					log = "CastleLinkLive is not connected";
 					if (appSettings.logType == LOG_HR && dataLogger != null)
 						dataLogger.closeLog();
+
+					if (appSettings.hrBroadcastPort > 0 && hrNetBroadcaster != null) hrNetBroadcaster.closeLog();
+					
 				}
 				
 				uiThreadExec(new Runnable() {
@@ -544,9 +505,7 @@ public class CastleLinkLiveMonitor {
 			}
 		});
 		
-		
-		reader = new Reader(cll);
-		layer = new SerialLayer(reader);
+		layer = new SerialLayer();
 
 		SerialLayer.Settings settings = layer.getSettings();
 		settings.setBaudRate(BAUD_RATE);
@@ -555,10 +514,14 @@ public class CastleLinkLiveMonitor {
 		settings.setStopBits(SerialLayer.Settings.STOPBITS_1);
 		settings.setFlowControl(SerialLayer.Settings.FLOWCONTROL_NONE);
 		
+		layer.setInputBufferSize(40);
+		layer.setNotifyOnDataAvailable(true);
+		layer.setWriteOnSeparateThread(false);
+		
 		layer.addEventListener(new ICommEventListener() {
 			
 			@Override
-			public void connectionEvent(int status, Object extraData) {
+			public void commLayerEvent(int status, final Object extraData) {
 				
 				switch(status) {
 					case SerialLayer.CONNECTED:
@@ -589,12 +552,12 @@ public class CastleLinkLiveMonitor {
 							});
 						}
 						
-						if (appSettings.logType != LOG_NONE && appSettings.logPath.length() > 0) 
-							dataLogger = new DataLogger(appSettings.logPath);
-						
-						if (appSettings.logType == LOG_RAW && dataLogger != null)
-							reader.addDataLogger(dataLogger);
-						
+						uiThreadExec(new Runnable() {
+							@Override
+							public void run() {
+								cllConnection.setBackground(ProgressColor);
+							}
+						});
 						cll.start(appSettings.throttleMode, appSettings.nESC);
 						cll.getESC(0).setMotorPoles(appSettings.motorPoles);
 						break;
@@ -603,29 +566,55 @@ public class CastleLinkLiveMonitor {
 						System.out.println("Serial layer disconnected");
 						cll.stop();
 						
-						if (appSettings.logType == LOG_RAW && dataLogger != null)
-							reader.removeDataLogger(dataLogger);
+						/*if (appSettings.logType == LOG_RAW && dataLogger != null)
+							layer.removeDataLogger(dataLogger);*/
+						layer.removeAllDataLoggers();
+						
 						break;
 						
 					case SerialLayer.CONNECTION_STARTED:
+						uiThreadExec(new Runnable() {
+							@Override
+							public void run() {
+								physicalLayerConnection.setBackground(ProgressColor);
+							}
+						});
 						System.out.println("Connecting...");
 						break;
 					
-					case SerialLayer.CONNECTION_BUSY:
-						System.out.println("Port in use!");
+					case SerialLayer.DATA_AVAILABLE:
+						int n = ((Integer) extraData).intValue();
+						byte[] data = layer.getData();
+						for (int i = 0; i < n; i++) {
+							try {
+								//System.out.println( "0x" +  Integer.toString( ((int) data[i]) & 0xFF, 16));
+								cll.putData(((int) data[i]) & 0xFF);
+							} catch (InvalidDataException e) {
+								dataErrors++;
+								updateDataErrors();
+							}
+						}						
 						break;
-					case SerialLayer.CONNECTION_ERROR:
-						System.out.println("ERROR: " + ((String) extraData));
+					
+					case SerialLayer.PORTSCAN_STARTED:
+					case SerialLayer.PORTSCAN_CANCELED:
+					case SerialLayer.PORTSCAN_COMPLETED:
+					case SerialLayer.PORTSCAN_ERROR:
+					case SerialLayer.PORTSCAN_PORT_FOUND:
 						break;
-					case SerialLayer.CONNECTION_FAILED:
-						System.out.println("Connection failed");
-						break;
-					case SerialLayer.NOSUCHDEV:
-						System.out.println("Port doesn't exist");
-						break;
+						
+					default:
+						uiThreadExec(new Runnable() {
+							@Override
+							public void run() {
+								MessageBox mb = new MessageBox(mainWin, SWT.ICON_ERROR | SWT.OK);
+								mb.setMessage((String) extraData );
+								mb.open();
+							}
+						});
 				}
 
-				if (status != SerialLayer.CONNECTED) {
+				if (status < SerialLayer.CONNECTION_STARTED ) {
 					uiThreadExec(new Runnable() {
 						@Override
 						public void run() {

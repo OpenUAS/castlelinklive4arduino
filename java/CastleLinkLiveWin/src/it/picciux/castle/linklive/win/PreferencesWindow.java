@@ -132,7 +132,7 @@ public class PreferencesWindow {
 	
 	private class ScanListener implements ICommEventListener {
 		@Override
-		public void connectionEvent(final int status, final Object extraData) {
+		public void commLayerEvent(final int status, final Object extraData) {
 			w.getDisplay().syncExec(new Runnable() {
 				
 				@Override

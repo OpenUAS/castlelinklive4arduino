@@ -1,5 +1,5 @@
 /*****************************************************************************
- *  CastleLinkLiveMonitor for windowed systems - DataLogger.java
+ *  CastleLinkLiveMonitor for windowed systems - EscBroadcaster.java
  *  Copyright (C) 2012  Matteo Piscitelli
  *  E-mail: matteo@picciux.it
  *
@@ -25,42 +25,21 @@
 package it.picciux.castle.linklive.win;
 
 import it.picciux.castle.linklive.CastleESC;
+import it.picciux.commlayer.win.net.NetworkDataBroadcaster;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
+public class EscBroadcaster extends NetworkDataBroadcaster {
 
-public class DataLogger extends it.picciux.commlayer.DataLogger {
-	private long startMs = -1;
+	public EscBroadcaster(int port) {
+		super(port);
+	}
+
+	public EscBroadcaster(int port, String name) {
+		super(port, name);
+	}
 	
-	public DataLogger() {
-		super();
-	}
-
-	public DataLogger(String logPath) {
-		super(logPath);
-	}
-
-	@Override
-	protected OutputStream openStream() {
-		if (logURL.length() == 0) return null;
-		
-		FileOutputStream fos;
-		
-		try {
-			fos = new FileOutputStream(logURL);
-		} catch (FileNotFoundException e) {
-			return null;
-		}
-		
-		return fos;
-	}
-
 	public void logESC(CastleESC esc) {
-		if (startMs == -1) startMs = System.currentTimeMillis();
 		
 		String line = 
-				Double.toString(CastleLinkLiveMonitor.round((System.currentTimeMillis() - startMs) / 1000.0d, 1)) + "," + 
 				Double.toString(CastleLinkLiveMonitor.round(esc.getVoltage(), 3)) + "," + 
 				Double.toString(CastleLinkLiveMonitor.round(esc.getRippleVoltage(), 3)) + "," + 
 				Double.toString(CastleLinkLiveMonitor.round(esc.getCurrent(), 3)) + "," +
@@ -73,9 +52,5 @@ public class DataLogger extends it.picciux.commlayer.DataLogger {
 				
 		writeText(line);
 	}
-
-	@Override
-	protected void setThreadData() {
-		this.setName("Data Logger");
-	}
+	
 }
