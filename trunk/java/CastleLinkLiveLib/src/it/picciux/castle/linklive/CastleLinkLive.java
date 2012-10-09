@@ -592,8 +592,17 @@ public class CastleLinkLive {
 	 */
 	public void stop() {
 		if (throttleThread != null && throttleThread.isRunning()) {
+			if (armed) {
+				throttleThread.postCommand(new Command(CMD_DISARM, 0));
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException e) {
+				}
+				armed = false;
+			}
 			throttleThread.terminate();
 			throttleThread = null;
+			throttlePresent = false;
 		}
 		
 		//throttle thread signals disconnection to eventHandler at thread termination
