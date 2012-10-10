@@ -27,6 +27,7 @@ package it.picciux.castle.linklive.win;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.logging.Level;
 
 import it.picciux.castle.linklive.CastleLinkLive;
 import it.picciux.castle.linklive.win.CastleLinkLiveMonitor.AppSettings;
@@ -205,7 +206,7 @@ public class PreferencesWindow {
 		try {
 			this.tempSettings = this.settings.clone();
 		} catch (CloneNotSupportedException e) {
-			System.out.println("Clone not supported");
+			CastleLinkLiveMonitor.log.log(Level.SEVERE, "Clone not supported", e);
 		}
 		this.layer = layer;
 		init();
@@ -218,7 +219,7 @@ public class PreferencesWindow {
 		int tCenter = CastleLinkLive.ABSOLUTE_THROTTLE_MIN +  
 				((CastleLinkLive.ABSOLUTE_THROTTLE_MAX - CastleLinkLive.ABSOLUTE_THROTTLE_MIN) / 2);
  
-		System.out.println("tCenter: " + tCenter);
+		CastleLinkLiveMonitor.log.finer("tCenter: " + tCenter);
 		
 		Group controls = new Group(w, SWT.NONE);
 		controls.setLayout(new RowLayout(SWT.HORIZONTAL));

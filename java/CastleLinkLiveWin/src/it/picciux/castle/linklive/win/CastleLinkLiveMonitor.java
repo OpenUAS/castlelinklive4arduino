@@ -50,6 +50,9 @@ import it.picciux.commlayer.ICommEventListener;
 import it.picciux.commlayer.win.net.NetworkDataBroadcaster;
 import it.picciux.commlayer.win.serial.SerialLayer;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 public class CastleLinkLiveMonitor {
 	
 	public static class AppSettings implements Cloneable {
@@ -139,6 +142,8 @@ public class CastleLinkLiveMonitor {
 	private static NetworkDataBroadcaster rawNetBroacaster = null;
 	private static int dataErrors = 0;
 
+	public static Logger log = Logger.getLogger("it.picciux.castle.linklive.win.monitor");
+	private static Level LOGLEVEL = Level.OFF;
 	
 	public CastleLinkLiveMonitor() {
 	}
@@ -317,15 +322,15 @@ public class CastleLinkLiveMonitor {
 		throttleModeDisplay.setText(THROTTLE_MODE_TITLE + throttleModeDescr(appSettings.throttleMode));
 		throttleScale.setEnabled(appSettings.throttleMode == CastleLinkLive.SOFTWARE_THROTTLE);
 		
-		System.out.println("Settings are:");
-		System.out.println("n. ESC: " + appSettings.nESC);
-		System.out.println("Motor poles: " + appSettings.motorPoles);
-		System.out.println("throttle min: " + appSettings.throttleMin);
-		System.out.println("throttle max: " + appSettings.throttleMax);
-		System.out.println("throttle mode: " + appSettings.throttleMode);
-		System.out.println("COM port: " + appSettings.port);
-		System.out.println("LOG type: " + appSettings.logType);
-		System.out.println("LOG path: " + appSettings.logPath);
+		log.config("Settings are:");
+		log.config("n. ESC: " + appSettings.nESC);
+		log.config("Motor poles: " + appSettings.motorPoles);
+		log.config("throttle min: " + appSettings.throttleMin);
+		log.config("throttle max: " + appSettings.throttleMax);
+		log.config("throttle mode: " + appSettings.throttleMode);
+		log.config("COM port: " + appSettings.port);
+		log.config("LOG type: " + appSettings.logType);
+		log.config("LOG path: " + appSettings.logPath);
 	}
 	
 	private static void updateValues(CastleESC esc) {
@@ -354,14 +359,14 @@ public class CastleLinkLiveMonitor {
 		temperatureValue.setText(Double.toString(round(esc.getTemperature(), 1)) + "°C");
 		
 		mainWin.setRedraw(true);
-		//System.out.println("UI update took " + (System.currentTimeMillis() - start) + " ms");
+		//log.fine("UI update took " + (System.currentTimeMillis() - start) + " ms");
 	}
 	
 	private static void uiThreadExec(Runnable runnable) {
 		try {
 			display.syncExec(runnable);
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
+			log.finer(e.getMessage());
 		}
 	}
 	
@@ -396,7 +401,7 @@ public class CastleLinkLiveMonitor {
 		try {
 			layer.connect();
 		} catch (CommLayerException ex) {
-			System.out.println(ex.getMessage());
+			log.fine(ex.getMessage());
 			System.exit(-1);
 		}
 		
@@ -406,6 +411,8 @@ public class CastleLinkLiveMonitor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		log.setLevel(LOGLEVEL);
+		
 		appSettings.port = "COM3";
 
 		display = Display.getDefault();
@@ -445,7 +452,7 @@ public class CastleLinkLiveMonitor {
 			
 			@Override
 			public void dataUpdated(final int index, final CastleESC esc) {
-				//System.out.println("Updating " + esc.getVoltage());
+				log.finer("Updating " + esc.getVoltage());
 				uiThreadExec(new Runnable() {
 					@Override
 					public void run() {
@@ -460,18 +467,18 @@ public class CastleLinkLiveMonitor {
 			@Override
 			public void connectionEvent(final boolean connected) {
 				final Color c;
-				String log;
+				String logText;
 				
 				if (connected) {
 					c = OKColor;
-					log = "CastleLinkLive is connected!";
+					logText = "CastleLinkLive is connected!";
 					if (appSettings.logType == LOG_HR && dataLogger != null)
 						dataLogger.openLog();
 					
 					if (appSettings.hrBroadcastPort > 0 && hrNetBroadcaster != null) hrNetBroadcaster.openLog();
 				} else {
 					c = KOColor;
-					log = "CastleLinkLive is not connected";
+					logText = "CastleLinkLive is not connected";
 					if (appSettings.logType == LOG_HR && dataLogger != null)
 						dataLogger.closeLog();
 
@@ -487,7 +494,7 @@ public class CastleLinkLiveMonitor {
 					}
 				});
 				
-				System.out.println(log);
+				log.fine(logText);
 			}
 
 			@Override
@@ -533,7 +540,7 @@ public class CastleLinkLiveMonitor {
 								connectButton.setEnabled(true);
 							}
 						});
-						System.out.println("Serial Layer is connected");
+						log.fine("Serial Layer is connected");
 						cll.setOutStream(layer.getOutputStream());
 						try {
 							cll.setThrottleMin(appSettings.throttleMin);
@@ -563,7 +570,7 @@ public class CastleLinkLiveMonitor {
 						break;
 						
 					case SerialLayer.DISCONNECTED:
-						System.out.println("Serial layer disconnected");
+						log.fine("Serial layer disconnected");
 						cll.stop();
 						
 						/*if (appSettings.logType == LOG_RAW && dataLogger != null)
@@ -579,7 +586,7 @@ public class CastleLinkLiveMonitor {
 								physicalLayerConnection.setBackground(ProgressColor);
 							}
 						});
-						System.out.println("Connecting...");
+						log.fine("Connecting...");
 						break;
 					
 					case SerialLayer.DATA_AVAILABLE:
@@ -587,7 +594,7 @@ public class CastleLinkLiveMonitor {
 						byte[] data = layer.getData();
 						for (int i = 0; i < n; i++) {
 							try {
-								//System.out.println( "0x" +  Integer.toString( ((int) data[i]) & 0xFF, 16));
+								log.finest( "0x" +  Integer.toString( ((int) data[i]) & 0xFF, 16));
 								cll.putData(((int) data[i]) & 0xFF);
 							} catch (InvalidDataException e) {
 								dataErrors++;
@@ -638,7 +645,9 @@ public class CastleLinkLiveMonitor {
 			if (!display.readAndDispatch())
 				display.sleep();
 		
+		log.finer("Stopping cll");
 		cll.stop();
+		log.finer("Disconnecting CommLayer");
 		layer.disconnect();
 		//cmdThread.terminate();
 		//System.exit(0);
