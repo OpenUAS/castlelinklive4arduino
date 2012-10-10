@@ -24,6 +24,8 @@
 
 package it.picciux.castle.linklive;
 
+//import java.util.logging.Logger;
+
 /**
  * Class implementing communication protocol with CastleLinkLiveSerialMonitor
  * @author 00688263
@@ -58,6 +60,8 @@ public class CLLCommProtocol {
 	private int h_buffer;
 	private int cnt = 0;
 	private int checksum = 0;
+	
+	//private static Logger log = Logger.getLogger("it.picciux.castle.linklive.CLLCommProtocol");
 	
 	public int getTicks(int index) {
 		if (index >= 0 && index < DATA_FRAME_CNT)

@@ -24,6 +24,8 @@
 
 package it.picciux.castle.linklive;
 
+//import java.util.logging.Logger;
+
 /**
  * Class representing a Castle Creations ESC
  * @author Matteo Piscitelli
@@ -41,6 +43,8 @@ public class CastleESC {
 	private double temperature;
 	private int rpmDivider = 1;
 	private boolean updated = false;
+	
+	//private static Logger log = Logger.getLogger("it.picciux.castle.linklive.castleesc");
 	
 	/**
 	 * Class Constructor

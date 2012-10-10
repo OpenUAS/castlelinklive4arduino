@@ -43,6 +43,9 @@ package it.picciux.castle.linklive;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Vector;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Java library to exchange data with a Castle Creations ESC through an
@@ -148,10 +151,10 @@ public class CastleLinkLive {
 			
 			if (! replied) {
 				keepRunning = false;
-				System.out.println("Hardware didn't reply. Failed!");
+				log.warning("Hardware didn't reply. Failed!");
 				startFailed(c, true);
 			} else if (! ack) {
-				System.out.println("Hardware didn't ACK. Failed");
+				log.warning("Hardware didn't ACK. Failed");
 				startFailed(c, false);
 			}
 			
@@ -159,7 +162,7 @@ public class CastleLinkLive {
 		}
 
 		public synchronized void ack() {
-			System.out.println("ACK");
+			log.finer("ACK");
 			replied = true;
 			keepWaiting = false;
 			ack = true;
@@ -167,7 +170,7 @@ public class CastleLinkLive {
 		}
 		
 		public synchronized void nack() {
-			System.out.println("NACK");
+			log.fine("NACK");
 			replied = true;
 			keepRunning = false;
 			ack = false;
@@ -182,26 +185,29 @@ public class CastleLinkLive {
 			}
 			
 			if (!sendAndWait(new Command(CMD_HELLO, 0))) return;
-			System.out.println("HELLO ACK");
+			log.finer("HELLO ACK");
 
 			if (!sendAndWait(new Command(CMD_SET_NESC, escs.size()))) return;
-			System.out.println("SET_NESC ACK");
+			log.finer("SET_NESC ACK");
 
 			if (! sendAndWait(new Command(CMD_SET_TMIN, throttleMin))) return;
-			System.out.println("SET_TMIN ACK");
+			log.finer("SET_TMIN ACK");
 
 			if (! sendAndWait(new Command(CMD_SET_TMAX, throttleMax))) return;
-			System.out.println("SET_TMAX ACK");
+			log.finer("SET_TMAX ACK");
 
 			if (! sendAndWait(new Command(CMD_SET_TMODE, throttleMode))) return;
-			System.out.println("SET_TMODE ACK");
+			log.finer("SET_TMODE ACK");
 
 			if (! sendAndWait(new Command(CMD_START, 0))) return;
-			System.out.println("START ACK");
+			log.finer("START ACK");
 			
 			startCompleted();
 		}	
 	}
+	
+	private static Logger log = Logger.getLogger("it.picciux.castle.linklive");
+	private static final Level LOGLEVEL = Level.OFF;
 	
 	/**
 	 * Integer constant indicating that the ESC interface has to generate throttle 
@@ -280,7 +286,7 @@ public class CastleLinkLive {
 	private void sendCommand(Command command) {
 		if (command == null) return;
 
-		//System.out.println("Sending command " + command.id);
+		log.finest("sendingCommand " + command.id + ": " + command.value);
 		
 		int [] buf = new int[] {
 				0x00, 0x00, 0x00
@@ -299,7 +305,7 @@ public class CastleLinkLive {
 			}
 			outStream.write(checksum);
 		} catch (IOException e) {
-			System.out.println("Write exception: " + e.getMessage());
+			log.warning("Write exception: " + e.getMessage());
 		}			
 	}
 	
@@ -364,6 +370,11 @@ public class CastleLinkLive {
 
 
 	public CastleLinkLive() {
+		log.getParent().setLevel(LOGLEVEL);
+		
+		Handler[] hs = log.getParent().getHandlers();
+		for (int i = 0; i < hs.length; i++)
+			hs[i].setLevel(LOGLEVEL);		
 	}
 	
 	/**
