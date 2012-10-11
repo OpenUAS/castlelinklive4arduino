@@ -47,11 +47,12 @@ import it.picciux.castle.linklive.InvalidDataException;
 import it.picciux.castle.linklive.InvalidThrottleLimitException;
 import it.picciux.commlayer.CommLayerException;
 import it.picciux.commlayer.ICommEventListener;
+import it.picciux.commlayer.win.log.LoggerFactory;
 import it.picciux.commlayer.win.net.NetworkDataBroadcaster;
 import it.picciux.commlayer.win.serial.SerialLayer;
 
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import it.picciux.commlayer.log.Logger;
+import it.picciux.commlayer.log.LoggerException;
 
 public class CastleLinkLiveMonitor {
 	
@@ -142,8 +143,9 @@ public class CastleLinkLiveMonitor {
 	private static NetworkDataBroadcaster rawNetBroacaster = null;
 	private static int dataErrors = 0;
 
-	public static Logger log = Logger.getLogger("it.picciux.castle.linklive.win.monitor");
-	private static Level LOGLEVEL = Level.OFF;
+	public static Logger log;
+	private static int LOGLEVEL = Logger.FINEST;
+	private static String LOGNAME = "it.picciux.castle.linklive.win.monitor";
 	
 	public CastleLinkLiveMonitor() {
 	}
@@ -411,6 +413,14 @@ public class CastleLinkLiveMonitor {
 	 * @param args
 	 */
 	public static void main(String[] args) {
+		Logger.init(new LoggerFactory());
+		
+		try {
+			log = Logger.getLogger(LOGNAME, Logger.CONSOLE, null);
+		} catch (LoggerException e1) {
+			log = Logger.getNullLogger(LOGNAME);
+		}
+		
 		log.setLevel(LOGLEVEL);
 		
 		appSettings.port = "COM3";

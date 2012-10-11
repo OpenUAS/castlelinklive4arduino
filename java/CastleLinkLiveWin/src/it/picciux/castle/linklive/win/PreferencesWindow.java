@@ -27,13 +27,13 @@ package it.picciux.castle.linklive.win;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.logging.Level;
 
 import it.picciux.castle.linklive.CastleLinkLive;
 import it.picciux.castle.linklive.win.CastleLinkLiveMonitor.AppSettings;
 import it.picciux.commlayer.CommLayer;
 import it.picciux.commlayer.CommLayerPort;
 import it.picciux.commlayer.ICommEventListener;
+import it.picciux.commlayer.log.Logger;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionEvent;
@@ -206,7 +206,7 @@ public class PreferencesWindow {
 		try {
 			this.tempSettings = this.settings.clone();
 		} catch (CloneNotSupportedException e) {
-			CastleLinkLiveMonitor.log.log(Level.SEVERE, "Clone not supported", e);
+			CastleLinkLiveMonitor.log.log(Logger.SEVERE, "Clone not supported", e);
 		}
 		this.layer = layer;
 		init();
