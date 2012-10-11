@@ -43,9 +43,12 @@ package it.picciux.castle.linklive;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Vector;
+
+/*
 import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.logging.Level;*/
+import it.picciux.commlayer.log.Logger;
+import it.picciux.commlayer.log.LoggerException;
 
 /**
  * Java library to exchange data with a Castle Creations ESC through an
@@ -206,8 +209,9 @@ public class CastleLinkLive {
 		}	
 	}
 	
-	private static Logger log = Logger.getLogger("it.picciux.castle.linklive");
-	private static final Level LOGLEVEL = Level.OFF;
+	private static Logger log = null;
+	private static final int LOGLEVEL = Logger.FINER;
+	private static final String LOGNAME = "it.picciux.castle.linklive";
 	
 	/**
 	 * Integer constant indicating that the ESC interface has to generate throttle 
@@ -370,11 +374,13 @@ public class CastleLinkLive {
 
 
 	public CastleLinkLive() {
-		log.getParent().setLevel(LOGLEVEL);
+		try {
+			log = Logger.getLogger(LOGNAME, Logger.CONSOLE, null);
+		} catch (LoggerException e) {
+			log = Logger.getNullLogger(LOGNAME);
+		}
 		
-		Handler[] hs = log.getParent().getHandlers();
-		for (int i = 0; i < hs.length; i++)
-			hs[i].setLevel(LOGLEVEL);		
+		log.setLevel(LOGLEVEL);
 	}
 	
 	/**
