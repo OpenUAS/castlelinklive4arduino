@@ -25,14 +25,12 @@
 #include "USART.h"
 #include "protocol.h"
 
-char buffer[BUFSIZE];
+char buffer[commandSize];
 int8_t bufcnt = -1;
 uint8_t checksum;
 
-
-COMMAND cmd;
-COMMAND *nextCmd = NULL;
-COMMAND *lastCmd = NULL;
+COMMAND queue[QUEUE_LEN];
+uint8_t queueCount;
 
 volatile uint8_t cmdQueueBusy = 0;
 
@@ -123,25 +121,18 @@ ISR(USART_RX_vect /*, ISR_NOBLOCK */) {
   if ( bufcnt == -1 ) {
     if (c == CMD_HEADER) bufcnt = 0; //header ok: start filling buffer
     return; 
-  } else if (bufcnt == BUFSIZE) { //buffer full: check checksum
+  } else if (bufcnt == commandSize) { //buffer full: check checksum
     if (checksum == c) { //checksum ok: queue the command
-
-      COMMAND *n = (COMMAND *) malloc(sizeof(COMMAND));
-      n->next = NULL;
-      //memcpy(&cmd, buffer, BUFSIZE); //post command
-      memcpy(n, &buffer, BUFSIZE); //post command
-      
       cmdQueueBusy = 1;
       
-      if (lastCmd == NULL) {
-        nextCmd = n;
-        lastCmd = n; 
-      } else {
-        lastCmd->next = n;
-        lastCmd = n;
-      }      
-      
-      cmdQueueBusy = 0;
+      if (queueCount == QUEUE_LEN) //queue is full
+    	  memmove(queue, (queue + 1), (commandSize * (QUEUE_LEN - 1))); //move all queue up by 1 slot
+
+      memcpy((queue + queueCount), buffer, commandSize); //copy new command at first available slot
+	  if (queueCount < QUEUE_LEN) queueCount++;
+
+	  cmdQueueBusy = 0;
+
     }
 
     bufcnt = -1; //reset buffer

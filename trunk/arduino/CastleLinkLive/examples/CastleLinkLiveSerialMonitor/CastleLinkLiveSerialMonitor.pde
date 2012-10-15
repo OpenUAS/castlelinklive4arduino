@@ -66,8 +66,9 @@ uint16_t tMin = 1000;
 uint16_t tMax = 2000;
 uint8_t nESC;
 
-extern COMMAND *nextCmd;
-extern COMMAND *lastCmd;
+extern COMMAND queue[QUEUE_LEN];
+extern uint8_t queueCount;
+
 extern volatile uint8_t cmdQueueBusy;
 
 void reply(uint8_t ack) {
@@ -175,22 +176,20 @@ void processCommand(COMMAND *c) {
 }
 
 void processCommandsQueue() {
+  COMMAND c;
 
   while(cmdQueueBusy) {}; //wait for command queue to be free;
 
   //extract command from queue
-  COMMAND *c = nextCmd;
 
-  while(c != NULL) { //if there are commands in queue 
+  while(queueCount > 0) { //if there are commands in queue
     while(cmdQueueBusy) {}; //wait for command queue to be free;  
-    nextCmd = c->next;
-    if (nextCmd == NULL)
-      lastCmd = NULL;
+    memcpy(&c, queue, commandSize);
+    memmove(queue, (queue + 1), commandSize * (QUEUE_LEN-1));
+    queueCount--;
+
+    processCommand(&c);
   
-    processCommand(c);
-  
-    free(c);
-    c = nextCmd;
   }
 }
 
