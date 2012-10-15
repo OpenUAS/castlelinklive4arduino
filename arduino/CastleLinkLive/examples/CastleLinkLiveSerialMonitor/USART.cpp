@@ -29,6 +29,7 @@ char buffer[BUFSIZE];
 int8_t bufcnt = -1;
 uint8_t checksum;
 
+
 COMMAND cmd;
 COMMAND *nextCmd = NULL;
 COMMAND *lastCmd = NULL;
@@ -50,7 +51,7 @@ void txstr(char *str) {
 }
 
 void txbuf(uint8_t *b, uint16_t count) {
-   for (int i = 0; i < count; i++) 
+   for (uint16_t i = 0; i < count; i++)
      tx( *(b + i) );
 }
 
