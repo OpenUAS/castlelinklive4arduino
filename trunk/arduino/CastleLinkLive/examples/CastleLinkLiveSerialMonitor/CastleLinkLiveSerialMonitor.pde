@@ -244,7 +244,7 @@ void loop() {
   
   switch(state) {
     case STATUS_HELLO:
-#ifndef LED_DISABLE    
+#if (LED_DISABLE == 0)
       if ( loopCnt == 0 )
         CastleLinkLive.setLed(0);
       else if (loopCnt == 10)
@@ -252,7 +252,7 @@ void loop() {
 #endif
       break;
     case STATUS_CONF:
-#ifndef LED_DISABLE    
+#if (LED_DISABLE == 0)
       if ( (loopCnt == 0) || (loopCnt == 20) )
         CastleLinkLive.setLed(0);
       else if ( (loopCnt == 10) || (loopCnt == 30) )
@@ -260,7 +260,7 @@ void loop() {
 #endif
       break;
     case STATUS_STARTED:
-#ifndef LED_DISABLE    
+#if (LED_DISABLE == 0)
       if ( (loopCnt == 0) || (loopCnt == 20) || (loopCnt == 40) )
         CastleLinkLive.setLed(0);
       else if ( (loopCnt == 10) || (loopCnt == 30) || (loopCnt == 50) )
