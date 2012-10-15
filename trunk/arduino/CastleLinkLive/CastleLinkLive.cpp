@@ -147,7 +147,7 @@ volatile uint8_t flags = 0;
 
 uint8_t throttleFailCnt = 0;
 
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
 uint8_t ledCnt = 0;
 volatile uint8_t ledMod = LED_MAX_MOD;
 #endif
@@ -432,7 +432,7 @@ void CastleLinkLiveLib::setThrottle(uint8_t throttle) {
       throttlePresenceHandler(1); 
   }
   
-#ifndef LED_DISABLE  
+#if (LED_DISABLE == 0)
   ledMod = 100 - _throttle + 1;
 #endif
 }
@@ -551,7 +551,7 @@ inline void throttleInterruptHandler(uint8_t pinStatus) {
   if ( pinStatus ) {  // throttle pulse start
      PORTD &= escPinsLowMask; //write LOW to ESCs pins
      TIMER_CLEAR();
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
      ledCnt++;
      ledCnt = ledCnt % ledMod;
      if (ledCnt == 0)
@@ -561,12 +561,12 @@ inline void throttleInterruptHandler(uint8_t pinStatus) {
 #endif
   } else {                            // throttle pulse end
      PORTD |= escPinsHighMask; //write high to ESCs pins
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
      uint16_t t = TCNT1;
 #endif
      TIMER_CLEAR();
 
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
      if (t < _throttleMinTicks)
        t = 0;
      else
@@ -650,7 +650,7 @@ ISR(TIMER1_COMPA_vect) {
     }
   }
 
-#ifndef LED_DISABLE  
+#if (LED_DISABLE == 0)
   if (! IS_THROTTLE_PRESENT() ) {
     ledCnt++;
     ledCnt = ledCnt % 100;
@@ -671,7 +671,7 @@ ISR(TIMER1_COMPB_vect) {
   if ( ! (PORTD & _BV(PORTD2)) ) {
     OCR1B = throttlePulseHighTicks; //set COMPB to generate throttle pulse throttleTicks-long
 
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
     ledCnt++;
     ledCnt = ledCnt % ledMod;
     if (ledCnt == 0)
