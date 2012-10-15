@@ -46,9 +46,11 @@
    that will turn on or off the led, working only when CastleLinkLive
    is not armed.
    Disabling the led also shrinks code by a few bytes
-   @see setLed
+   
+   Set LED_DISABLE to any non-zero value will disable led function
+   @see CastleLinkLive::setLed(uint8_t on)
  */
-#define LED_DISABLE 
+#define LED_DISABLE 0
 
 /**
     By default, CastleLinkLive will be enabled to control to up to 2 ESCs
