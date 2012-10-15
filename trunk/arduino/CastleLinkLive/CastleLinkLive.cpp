@@ -43,9 +43,8 @@
   available and enabled.
 */
 
-#ifndef WProgram_h
+#include "pins_arduino.h"
 #include "WProgram.h"
-#endif
 
 #include "CastleLinkLive.h"
 
