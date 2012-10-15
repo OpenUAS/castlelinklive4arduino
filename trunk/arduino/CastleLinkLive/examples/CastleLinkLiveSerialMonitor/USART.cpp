@@ -20,6 +20,7 @@
  *  SVN $Id$
  *****************************************************************************/
 
+#include "pins_arduino.h"
 #include "WProgram.h"
 #include "USART.h"
 #include "protocol.h"

@@ -45,6 +45,8 @@
  *  providing an UI to interact and show ESC data.
  ******************************************************************************/
  
+#include "CastleLinkLiveSerialMonitor.h"
+
 #include "config.h"
 #include "CastleLinkLive.h"
 #include "USART.h"
@@ -163,7 +165,7 @@ void processCommand(COMMAND *c) {
       
     default:
       reply(0);    
-      
+      break;
   }
   
 }
