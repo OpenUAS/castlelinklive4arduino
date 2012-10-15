@@ -45,7 +45,6 @@
 #define CMD_SET_THROTTLE                   0x08
 #define CMD_DISARM			   0x09
 
-#define BUFSIZE  3
 
 #define STATUS_HELLO                          0
 #define STATUS_CONF                           1
@@ -58,7 +57,10 @@ typedef struct cmd_struct {
   uint8_t id;
   uint8_t l;
   uint8_t h;
-  struct cmd_struct *next;
 } COMMAND;
+
+#define QUEUE_LEN 10
+
+const size_t commandSize = sizeof(COMMAND);
 
 
