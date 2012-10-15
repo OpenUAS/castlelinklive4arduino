@@ -81,6 +81,7 @@ void processCommand(COMMAND *c) {
   //process command
   switch(c->id) {
     case CMD_NOOP:
+      reply(1);
       break;
 
     case CMD_HELLO:
@@ -144,6 +145,7 @@ void processCommand(COMMAND *c) {
       if (state == STATUS_STARTED) {
         CastleLinkLive.throttleArm();
         state = STATUS_ARMED;
+        reply(1);
       } else
         reply(0);
       break;
@@ -151,6 +153,7 @@ void processCommand(COMMAND *c) {
     case CMD_SET_THROTTLE:
       if ( (state == STATUS_STARTED) || (state == STATUS_ARMED) ) {
         CastleLinkLive.setThrottle(c->l);
+        reply(1);
       } else
         reply(0);
       break;
@@ -159,6 +162,7 @@ void processCommand(COMMAND *c) {
       if (state == STATUS_ARMED) {
         CastleLinkLive.throttleDisarm();
         state = STATUS_STARTED;
+        reply(1);
       } else
         reply(0);
       break;
