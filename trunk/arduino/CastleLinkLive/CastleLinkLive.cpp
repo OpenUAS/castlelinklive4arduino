@@ -270,7 +270,7 @@ uint8_t CastleLinkLiveLib::_copyDataStructure(uint8_t index, CASTLE_RAW_DATA *de
 /* 
  * PUBLIC FUNCTIONS
  *****************************************************/
-#ifndef LED_DISABLE
+#if (LED_DISABLE == 0)
 void CastleLinkLiveLib::setLed(uint8_t on) {
   if ( TIMER_IS_RUNNING() ) return;
   
