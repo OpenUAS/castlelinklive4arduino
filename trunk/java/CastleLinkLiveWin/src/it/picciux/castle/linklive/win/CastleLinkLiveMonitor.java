@@ -67,8 +67,8 @@ public class CastleLinkLiveMonitor {
 		String logPath = "";
 		
 		//TODO implement UI for network broadcast settings
-		int hrBroadcastPort = 8888; 
-		int rawBroadcastPort = 8889;
+		int hrBroadcastPort = 0; 
+		int rawBroadcastPort = 0;
 
 		@Override
 		protected AppSettings clone() throws CloneNotSupportedException {
@@ -144,7 +144,7 @@ public class CastleLinkLiveMonitor {
 	private static int dataErrors = 0;
 
 	public static Logger log;
-	private static int LOGLEVEL = Logger.FINEST;
+	private static int LOGLEVEL = Logger.FINE;
 	private static String LOGNAME = "it.picciux.castle.linklive.win.monitor";
 	
 	public CastleLinkLiveMonitor() {
