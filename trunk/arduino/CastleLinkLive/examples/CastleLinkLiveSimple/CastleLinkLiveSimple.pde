@@ -39,6 +39,7 @@
  * a simple terminal monitor for Castle ESCs.
  *******************************************************/
 
+#include "CastleLinkLiveSimple.h"
 #include "CastleLinkLive.h"
 
 #define SERIAL_BUFSIZE  10
