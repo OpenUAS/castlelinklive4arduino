@@ -77,48 +77,48 @@ void processCommand(COMMAND *c) {
   //process command
   switch(c->id) {
     case CMD_NOOP:
-      reply(1);
+      reply(R_ACK);
       break;
 
     case CMD_HELLO:
       if (state < STATUS_ARMED) {
         state = STATUS_CONF;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
       break;
       
     case CMD_SET_TMIN:
       if (state == STATUS_CONF) {
         tMin = (c->h << 8) | c->l;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
       break;
       
     case CMD_SET_TMAX:
       if (state == STATUS_CONF) {
         tMax = (c->h << 8) | c->l;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);    
+        reply(R_NACK);
       break;
       
     case CMD_SET_TMODE:
       if (state == STATUS_CONF) {
         autoGenThrottle = (c->l > 0);
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
     
       break;
       
     case CMD_SET_NESC:
       if (state == STATUS_CONF) {
         nESC = c->l;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);    
+        reply(R_NACK);
       break;
 
     case CMD_START:
@@ -128,12 +128,12 @@ void processCommand(COMMAND *c) {
           
         if (CastleLinkLive.begin(nESC, throttlePin, tMin, tMax)) {
           state = STATUS_STARTED;
-          reply(1);
+          reply(R_ACK);
         } else
-          reply(0);
+          reply(R_NACK);
           
       } else
-        reply(0);
+        reply(R_NACK);
       break;
 
       
@@ -141,47 +141,33 @@ void processCommand(COMMAND *c) {
       if (state == STATUS_STARTED) {
         CastleLinkLive.throttleArm();
         state = STATUS_ARMED;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
       break;
       
     case CMD_SET_THROTTLE:
       if ( (state == STATUS_STARTED) || (state == STATUS_ARMED) ) {
         CastleLinkLive.setThrottle(c->l);
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
       break;
 
     case CMD_DISARM:
       if (state == STATUS_ARMED) {
         CastleLinkLive.throttleDisarm();
         state = STATUS_STARTED;
-        reply(1);
+        reply(R_ACK);
       } else
-        reply(0);
+        reply(R_NACK);
       break;
       
     default:
-      reply(0);    
+      reply(R_NACK);
       break;
   }
   
-}
-
-void processCommandsQueue() {
-  COMMAND c;
-
-  while(queueCount > 0) { //if there are commands in queue
-	uart_disable_interrupt(); //temporarily disable uart interrupt while we extract first command
-    memcpy(&c, queue, commandSize); //extract first command
-    memmove(queue, (queue + 1), commandSize * (QUEUE_LEN-1)); //move queue up one slot
-    queueCount--; //decrease queue count
-    uart_enable_interrupt(); //done: re-enable uart interrupt
-
-    processCommand(&c); //we can now process our command
-  }
 }
 
 /*
@@ -233,8 +219,9 @@ void sendData(uint8_t escID, CASTLE_RAW_DATA *data) {
 
 void loop() {
   CASTLE_RAW_DATA escData;
+  COMMAND *command = getNextCommand();
 
-  processCommandsQueue();  
+  if ( command ) processCommand(command);
   
   switch(state) {
     case STATUS_HELLO:
@@ -273,7 +260,7 @@ void loop() {
           if (CastleLinkLive.getData(e, &escData)) 
             sendData(e, &escData);  
           
-          processCommandsQueue();  
+          if ( (command = getNextCommand()) ) processCommand(command); //give a chance to execute a command
         }
       }
       break; 

@@ -29,9 +29,6 @@ char buffer[commandSize];
 int8_t bufcnt = -1;
 uint8_t checksum;
 
-COMMAND queue[QUEUE_LEN];
-volatile uint8_t queueCount;
-
 void tx(char data) {
   while( ( UCSR0A & _BV(UDRE0) )==0 );
   UDR0 = data;
@@ -66,7 +63,7 @@ unsigned char rx_nb(void) {
 }
 
 /*
- * From arduino hardware_serial.cpp
+ * From arduino HardwareSerial.cpp
  */
 void uart_init(uint16_t baudrate) {
   short use_u2x = 1;
@@ -109,14 +106,9 @@ ISR(USART_RX_vect /*, ISR_NOBLOCK */) {
   if ( bufcnt == -1 ) {
     if (c == CMD_HEADER) bufcnt = 0; //header ok: start filling buffer
     return; 
-  } else if (bufcnt == commandSize) { //buffer full: check checksum
-    if (checksum == c) { //checksum ok: queue the command
-      if (queueCount == QUEUE_LEN) //queue is full
-    	  memmove(queue, (queue + 1), (commandSize * (QUEUE_LEN - 1))); //move all queue up by 1 slot
-
-      memcpy((queue + queueCount), buffer, commandSize); //copy new command at first available slot
-	  if (queueCount < QUEUE_LEN) queueCount++;
-    }
+  } else if (bufcnt == (int) commandSize) { //buffer full: check checksum
+    if (checksum == c) //checksum ok: queue the command
+    	queueCommand(buffer);
 
     bufcnt = -1; //reset buffer
     return;
