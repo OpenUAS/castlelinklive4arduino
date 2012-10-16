@@ -89,21 +89,24 @@
 #ifndef _STDDEF_H
 #include "stddef.h"
 #endif
-#ifndef Pins_Arduino_h
 #include "pins_arduino.h"
-#endif
+#include "WProgram.h"
+
 
 #include "CastleLinkLive_config.h"
 
-/*
-#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__) || defined (__AVR_ATmega168__) || defined(__AVR_ATmega328__)
+#if defined (__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
 #define MAX_ESCS 2
-#elseif defined (__AVR_ATmega8__)
-#define MAX_ESCS 1
+#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+//#define MAX_ESCS 2
+#error "Arduino MEGA is not supported ATM"
+#elif defined (__AVR_ATmega8__)
+//#define MAX_ESCS 1
+#error "Old Arduinos ATmega8-based are not supported ATM"
 #else
 #define MAX_ESCS 0
+#error "MCU not supported"
 #endif
-*/
 
 /** \cond */
 #define LIBRARY_VERSION 0.1.0
