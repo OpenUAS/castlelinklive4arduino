@@ -30,8 +30,10 @@ unsigned char rx(void);
 unsigned char rx_nb(void);
 void uart_flush_rxbuffer();
 void uart_init(uint16_t baudrate);
-void uart_enable_interrupt();
-void uart_disable_interrupt();
+/*static inline void uart_enable_interrupt();
+static inline void uart_disable_interrupt();*/
 
+#define uart_enable_interrupt() ( UCSR0B |= _BV(RXCIE0) )
+#define uart_disable_interrupt() ( UCSR0B &= ~( _BV(RXCIE0) ) )
 
 #endif

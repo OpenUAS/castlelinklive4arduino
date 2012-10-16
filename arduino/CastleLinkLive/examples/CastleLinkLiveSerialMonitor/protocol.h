@@ -63,4 +63,8 @@ typedef struct cmd_struct {
 
 const size_t commandSize = sizeof(COMMAND);
 
+extern COMMAND queue[QUEUE_LEN];
+extern volatile uint8_t queueCount;
+
+
 

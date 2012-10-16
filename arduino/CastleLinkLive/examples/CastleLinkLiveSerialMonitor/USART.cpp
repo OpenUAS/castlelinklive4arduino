@@ -30,9 +30,7 @@ int8_t bufcnt = -1;
 uint8_t checksum;
 
 COMMAND queue[QUEUE_LEN];
-uint8_t queueCount;
-
-volatile uint8_t cmdQueueBusy = 0;
+volatile uint8_t queueCount;
 
 void tx(char data) {
   while( ( UCSR0A & _BV(UDRE0) )==0 );
@@ -97,16 +95,6 @@ void uart_init(uint16_t baudrate) {
 	
 }
 
-void uart_enable_interrupt() {
-  // Enable UART RX interrupts
-  UCSR0B |= _BV(RXCIE0);  
-}
-
-void uart_disable_interrupt() {
-  // Disable UART RX interrupts
-  UCSR0B &= ~( _BV(RXCIE0) );    
-}
-
 void uart_flush_rxbuffer() {
   unsigned char dummy;
   while ( UCSR0A & _BV(RXC0) ) dummy = UDR0; 
@@ -123,16 +111,11 @@ ISR(USART_RX_vect /*, ISR_NOBLOCK */) {
     return; 
   } else if (bufcnt == commandSize) { //buffer full: check checksum
     if (checksum == c) { //checksum ok: queue the command
-      cmdQueueBusy = 1;
-      
       if (queueCount == QUEUE_LEN) //queue is full
     	  memmove(queue, (queue + 1), (commandSize * (QUEUE_LEN - 1))); //move all queue up by 1 slot
 
       memcpy((queue + queueCount), buffer, commandSize); //copy new command at first available slot
 	  if (queueCount < QUEUE_LEN) queueCount++;
-
-	  cmdQueueBusy = 0;
-
     }
 
     bufcnt = -1; //reset buffer

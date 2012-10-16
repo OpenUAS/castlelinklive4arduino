@@ -66,11 +66,6 @@ uint16_t tMin = 1000;
 uint16_t tMax = 2000;
 uint8_t nESC;
 
-extern COMMAND queue[QUEUE_LEN];
-extern uint8_t queueCount;
-
-extern volatile uint8_t cmdQueueBusy;
-
 void reply(uint8_t ack) {
   tx(OUT_RESPONSE_HEADER_H);
   tx(OUT_RESPONSE_HEADER_L | (ack & 0x01) ) ;
@@ -178,18 +173,14 @@ void processCommand(COMMAND *c) {
 void processCommandsQueue() {
   COMMAND c;
 
-  while(cmdQueueBusy) {}; //wait for command queue to be free;
-
-  //extract command from queue
-
   while(queueCount > 0) { //if there are commands in queue
-    while(cmdQueueBusy) {}; //wait for command queue to be free;  
-    memcpy(&c, queue, commandSize);
-    memmove(queue, (queue + 1), commandSize * (QUEUE_LEN-1));
-    queueCount--;
+	uart_disable_interrupt(); //temporarily disable uart interrupt while we extract first command
+    memcpy(&c, queue, commandSize); //extract first command
+    memmove(queue, (queue + 1), commandSize * (QUEUE_LEN-1)); //move queue up one slot
+    queueCount--; //decrease queue count
+    uart_enable_interrupt(); //done: re-enable uart interrupt
 
-    processCommand(&c);
-  
+    processCommand(&c); //we can now process our command
   }
 }
 
