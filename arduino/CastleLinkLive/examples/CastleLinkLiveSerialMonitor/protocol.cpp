@@ -1,6 +1,6 @@
 /*****************************************************************************
- *  CastleLinkLiveSerialMonitor - USART.h
- *  Copyright (C) 2012  Matteo Piscitelli
+ *  CastleLinkLiveSerialMonitor - protocol.cpp
+ *  Copyright (C) 2012 Matteo Piscitelli
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,19 +20,30 @@
  *  SVN $Id$
  *****************************************************************************/
 
-#ifndef USART_H
-#define USART_H
+#include "WProgram.h"
+#include "USART.h"
+#include "protocol.h"
 
-void txbuf(uint8_t *b, uint16_t count);
-void txstr(char *str);
-void tx(char data);
-unsigned char rx(void);
-unsigned char rx_nb(void);
-void uart_flush_rxbuffer();
-void uart_init(uint16_t baudrate);
+COMMAND_QUEUE cmdQueue;
 
-//define uart enable disable interrupts as macros
-#define uart_enable_interrupt() ( UCSR0B |= _BV(RXCIE0) )
-#define uart_disable_interrupt() ( UCSR0B &= ~( _BV(RXCIE0) ) )
+COMMAND c; //out-of-queue command buffer to be processed
 
-#endif
+/*
+ * getNextCommand is designed to be used in main code, so has to make sure no-one
+ * (the USART ISR in this case) is accessing the data
+ */
+COMMAND * getNextCommand() {
+  uart_disable_interrupt(); //temporarily disable uart interrupt while we extract first command
+
+  if (cmdQueue.head == cmdQueue.tail) {
+  	  uart_enable_interrupt();
+  	  return NULL; //queue is empty: nothing to do
+  }
+
+  memcpy(&c, &(cmdQueue.queue[cmdQueue.tail]), commandSize); //extract first command to process
+  cmdQueue.tail = (cmdQueue.tail + 1) % QUEUE_LEN; //advance tail
+  uart_enable_interrupt(); //done: re-enable uart interrupt
+
+  return &c; //return the command for further processing
+}
+
