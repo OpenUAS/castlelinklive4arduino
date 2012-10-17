@@ -62,26 +62,31 @@ typedef struct cmd_struct {
   uint8_t h;
 } COMMAND;
 
-typedef struct cmd_queue_struct {
-	COMMAND queue[QUEUE_LEN];
-	uint8_t head;
-	uint8_t tail;
-} COMMAND_QUEUE;
 
 const size_t commandSize = sizeof(COMMAND);
 
-extern COMMAND_QUEUE cmdQueue;
+extern COMMAND cmdToProcess;
+extern volatile uint8_t cmdProcessed;
 
-/* queueCommand is designed to be used in an ISR, so it's inlined and
- * assumes to be the only one to access the data.
+/*
+ * queueCommand is designed to be used in an ISR, so it's inlined and
+ * checks for no other command waiting to be processed so to not interfere
+ * with command processing code in main context.
+ * Every command received while main context is busy processing a previous
+ * command will be therefore discarded
  */
 static inline void queueCommand(char *buffer) {
-    uint8_t n = (cmdQueue.head + 1) % QUEUE_LEN; //pre-calc next queue advance
+	if (cmdProcessed) {
+		memcpy((&cmdToProcess), buffer, commandSize); //copy command to command-to-process place
+		cmdProcessed = 0;
+	}
+}
 
-    if (n != cmdQueue.tail) { //check if we are not to overflow the queue
-  	  memcpy((cmdQueue.queue + cmdQueue.head), buffer, commandSize); //copy command at queue head
-  	  cmdQueue.head = n; //advance queue head for next command
-    }
+/*
+ * signal main context is done with previous command and ready to process another one
+ */
+static inline void commandProcessed() {
+	cmdProcessed = 1;
 }
 
 COMMAND * getNextCommand();
