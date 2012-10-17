@@ -24,26 +24,15 @@
 #include "USART.h"
 #include "protocol.h"
 
-COMMAND_QUEUE cmdQueue;
+COMMAND cmdToProcess; //store for the to-be-processed command
+volatile uint8_t cmdProcessed = 1; //flag to indicate processed/still-to-process
 
-COMMAND c; //out-of-queue command buffer to be processed
-
-/*
- * getNextCommand is designed to be used in main code, so has to make sure no-one
- * (the USART ISR in this case) is accessing the data
- */
 COMMAND * getNextCommand() {
-  uart_disable_interrupt(); //temporarily disable uart interrupt while we extract first command
+  //COMMAND *ret = NULL;
 
-  if (cmdQueue.head == cmdQueue.tail) {
-  	  uart_enable_interrupt();
-  	  return NULL; //queue is empty: nothing to do
-  }
-
-  memcpy(&c, &(cmdQueue.queue[cmdQueue.tail]), commandSize); //extract first command to process
-  cmdQueue.tail = (cmdQueue.tail + 1) % QUEUE_LEN; //advance tail
-  uart_enable_interrupt(); //done: re-enable uart interrupt
-
-  return &c; //return the command for further processing
+  if (! cmdProcessed) { //there's a command to process
+	  return &cmdToProcess;
+  } else
+	  return NULL; //nothing to process
 }
 

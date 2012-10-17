@@ -48,6 +48,7 @@
 #include "CastleLinkLiveSerialMonitor.h"
 
 #include "config.h"
+#include "CastleLinkLive_config.h"
 #include "CastleLinkLive.h"
 #include "USART.h"
 #include "protocol.h"
@@ -60,15 +61,19 @@ int loopCnt = 0;
 // control variables
 boolean sendThrottle = true;
 boolean autoGenThrottle = false;
-boolean throttlePresent = false;
+volatile boolean throttlePresent = false;
 
 uint16_t tMin = 1000;
 uint16_t tMax = 2000;
 uint8_t nESC;
 
 void reply(uint8_t ack) {
-  tx(OUT_RESPONSE_HEADER_H);
-  tx(OUT_RESPONSE_HEADER_L | (ack & 0x01) ) ;
+	//let USART ISR process other incoming data since we have terminated
+	//accessing command data
+	commandProcessed();
+
+	tx(OUT_RESPONSE_HEADER_H);
+	tx(OUT_RESPONSE_HEADER_L | (ack & 0x01) ) ;
 }
 
 void processCommand(COMMAND *c) {
@@ -179,7 +184,6 @@ void throttlePresence(uint8_t present) {
 }
 
 void setup() {
-  //pinMode(13, OUTPUT);
   state = STATUS_HELLO;
   uart_init(SERIAL_BAUD_RATE);
   
@@ -250,18 +254,19 @@ void loop() {
       break;
     case STATUS_ARMED:
       if (! throttlePresent) {
-        memset(&escData, 0, sizeof(CASTLE_RAW_DATA));
-        escData.ticks[FRAME_REFERENCE] = 2000;
-        escData.ticks[FRAME_TEMP2] = 1000;
-        sendData(0, &escData);
+		memset(&escData, 0, sizeof(CASTLE_RAW_DATA));
+		escData.ticks[FRAME_REFERENCE] = 2000;
+		escData.ticks[FRAME_TEMP2] = 1000;
+		sendData(0, &escData);
         delay(100);
       } else {
         for (int e = 0; e < nESC; e++) {
-          if (CastleLinkLive.getData(e, &escData)) 
-            sendData(e, &escData);  
-          
+          if (CastleLinkLive.getData(e, &escData))
+            sendData(e, &escData);
+
           if ( (command = getNextCommand()) ) processCommand(command); //give a chance to execute a command
         }
+
       }
       break; 
   }
