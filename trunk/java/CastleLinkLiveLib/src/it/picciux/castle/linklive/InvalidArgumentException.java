@@ -1,5 +1,5 @@
 /*****************************************************************************
- *  CastleLinkLive library - InvalidThrottleLimitException.java
+ *  CastleLinkLive library - InvalidArgumentException.java
  *  Copyright (C) 2012  Matteo Piscitelli
  *  E-mail: matteo@picciux.it
  *
@@ -24,24 +24,25 @@
 
 package it.picciux.castle.linklive;
 
-public class InvalidThrottleLimitException extends CastleLinkLiveException {
+public class InvalidArgumentException extends CastleLinkLiveException {
+
 	/**
 	 * 
 	 */
-	private static final long serialVersionUID = 971278599091488429L;
+	private static final long serialVersionUID = 3430828516380077570L;
 
-	public InvalidThrottleLimitException() {
+	public InvalidArgumentException() {
 	}
 
-	public InvalidThrottleLimitException(String message) {
+	public InvalidArgumentException(String message) {
 		super(message);
 	}
 
-	public InvalidThrottleLimitException(Throwable cause) {
+	public InvalidArgumentException(Throwable cause) {
 		super(cause);
 	}
 
-	public InvalidThrottleLimitException(String message, Throwable cause) {
+	public InvalidArgumentException(String message, Throwable cause) {
 		super(message, cause);
 	}
 

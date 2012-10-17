@@ -24,9 +24,7 @@
 
 package it.picciux.castle.linklive;
 
-public class InvalidDataException extends Exception {
-
-	
+public class InvalidDataException extends CastleLinkLiveException {
 	/**
 	 * 
 	 */
