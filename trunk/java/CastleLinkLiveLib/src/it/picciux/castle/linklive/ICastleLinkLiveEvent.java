@@ -26,14 +26,17 @@ package it.picciux.castle.linklive;
 
 /**
  * Interface to be implemented by objects that want to receive
- * notifications from CastleLinkLive
+ * notifications from CastleLinkLive. 
+ * Use {@link CastleLinkLive#setEventHandler(ICastleLinkLiveEvent)}
+ * method passing an object implementing this interface to receive
+ * events notification through it
  * @see CastleLinkLive
  * @author Matteo Piscitelli
  *
  */
 public interface ICastleLinkLiveEvent {
 	/**
-	 * Event triggered when CastleLinkLive succesfully parsed a completed set of data
+	 * Event triggered when CastleLinkLive successfully parsed a completed set of data
 	 * received from ESC interface
 	 * @param index 0-based ESC index
 	 * @param esc {@link CastleESC} object filled with updated data
@@ -41,7 +44,7 @@ public interface ICastleLinkLiveEvent {
 	public void dataUpdated(int index, CastleESC esc);
 	
 	/**
-	 * Event triggered when ESC interface losts throttle signal or detects a valid
+	 * Event triggered when ESC interface looses throttle signal or detects a valid
 	 * signal.
 	 * @param present will be true if a valid throttle signal is present, false
 	 * otherwise.
@@ -59,4 +62,10 @@ public interface ICastleLinkLiveEvent {
 	 * @param reason will indicate the reason
 	 */
 	public void connectionError(String reason);
+	
+	/**
+	 * Event triggered when ESC interface is succesfully armed/disarmed
+	 * @param armed true if armed, false otherwise
+	 */
+	public void armedEvent(boolean armed);
 }
