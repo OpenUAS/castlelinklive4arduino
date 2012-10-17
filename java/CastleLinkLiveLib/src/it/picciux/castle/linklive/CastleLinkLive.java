@@ -70,11 +70,20 @@ public class CastleLinkLive {
 		public int value;
 	}
 	
-	private class ThrottleThread extends Thread {
+	private class ESCInterfaceThread extends Thread {
 		private boolean keepRunning = true;
+		private boolean keepWaiting = false;
+		private boolean replied = false;
+		private boolean ack = false;		
 		private Vector<Command> cmdQueue = new Vector<Command>();
+		private int waitingCommandID = CMD_NONE;
 		
-		public ThrottleThread() {
+		private static final int START_TIMEOUT = 3000;
+		private static final int RUN_TIMEOUT = 2000;
+		
+		private static final int CMD_NONE = -1;
+		
+		public ESCInterfaceThread() {
 			super();
 			setName("Throttle Thread");
 		}
@@ -85,9 +94,37 @@ public class CastleLinkLive {
 		
 		public synchronized void terminate() {
 			keepRunning = false;
+			
+			/* 
+			 * force replied to avoid to notify failure when thread is terminated 
+			 * while it's waiting for a reply
+			 */
+			replied = true; 
 			interrupt();
 		}
 
+		public synchronized void cancel() {
+            keepRunning = false;
+            interrupt();
+		}
+		
+		public synchronized void ack() {
+			log.finer("ACK " + waitingCommandID);
+			replied = true;
+			keepWaiting = false;
+			ack = true;
+			notify();
+		}
+		
+		public synchronized void nack() {
+			log.finer("NACK " + waitingCommandID);
+			replied = true;
+			keepRunning = false;
+			ack = false;
+			notify();
+		}
+		
+		
 		public synchronized void postCommand(Command command) {
 			cmdQueue.add(command);
 		}
@@ -99,15 +136,81 @@ public class CastleLinkLive {
 			return c;
 		}
 		
+		private synchronized boolean sendAndWait(Command c, int timeout) {
+			if (c == null) return true;
+			
+			waitingCommandID = c.id;
+			
+			keepWaiting = true;
+			replied = false;
+			
+			if (! keepRunning) return false; 
+				
+			sendCommand(c);
+			
+			int toWait = timeout;
+			long waitStart = System.currentTimeMillis();
+
+			while (keepRunning && keepWaiting) {
+				try {
+					wait(toWait);
+					keepWaiting = false; 
+				} catch (InterruptedException e) {
+					toWait -= waitStart - System.currentTimeMillis();
+					waitStart = System.currentTimeMillis();
+					if (toWait <= 0) keepWaiting = false;
+				}				
+			}
+			
+			if (! replied) {
+				keepRunning = false;
+				log.warning("Hardware didn't reply. Failed!");
+				escFailed(c, true);
+			} else if (! ack) {
+				log.warning("Hardware didn't ACK. Failed");
+				escFailed(c, false);
+			}
+			
+			waitingCommandID = CMD_NONE;
+			return replied;
+		}
+		
+		
 		@Override
 		public void run() {
+			
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+			}
+			
+			log.finer("Sending HELLO (" + CMD_HELLO + ")");
+			if (!sendAndWait(new Command(CMD_HELLO, 0), START_TIMEOUT)) return;
+
+			log.finer("Sending SET_NESC (" + CMD_SET_NESC + ") " + escs.size());
+			if (!sendAndWait(new Command(CMD_SET_NESC, escs.size()), START_TIMEOUT)) return;
+
+			log.finer("Sending SET_TMIN (" + CMD_SET_TMIN + ") " + throttleMin);
+			if (! sendAndWait(new Command(CMD_SET_TMIN, throttleMin), START_TIMEOUT)) return;
+
+			log.finer("Sending SET_TMAX (" + CMD_SET_TMAX + ") " + throttleMax);
+			if (! sendAndWait(new Command(CMD_SET_TMAX, throttleMax), START_TIMEOUT)) return;
+
+			log.finer("Sending SET_TMODE (" + CMD_SET_TMODE + ") " + throttleMode);
+			if (! sendAndWait(new Command(CMD_SET_TMODE, throttleMode), START_TIMEOUT)) return;
+
+			log.finer("Sending START (" + CMD_START + ") " );
+			if (! sendAndWait(new Command(CMD_START, 0), START_TIMEOUT)) return;
+			
+			startCompleted();
+			
 			while (isRunning()) {
-				sendCommand(commandInQueue());
+				sendAndWait(commandInQueue(), RUN_TIMEOUT);
 				
 				if (isArmed() && throttleMode == SOFTWARE_THROTTLE)
-					sendCommand(new Command(CMD_SET_THROTTLE, throttle));
+					sendAndWait(new Command(CMD_SET_THROTTLE, throttle), RUN_TIMEOUT);
 				else
-					sendCommand(new Command(CMD_NOOP, 0));
+					sendAndWait(new Command(CMD_NOOP, 0), RUN_TIMEOUT);
 				
 				try {
 					Thread.sleep(100);
@@ -120,98 +223,12 @@ public class CastleLinkLive {
 		}	
 	}
 
-	private class StartThread extends Thread {
-		private boolean keepRunning = true;
-		private boolean keepWaiting = false;
-		private boolean replied = false;
-		private boolean ack = false;
-		
-		public StartThread() {
-			super();
-			setName("Start thread");
-		}
-		
-		public synchronized void cancel() {
-			keepRunning = false;
-			interrupt();
-		}
-
-		private synchronized boolean sendAndWait(Command c) {
-			keepWaiting = true;
-			replied = false;
-			
-			if (! keepRunning) return false; 
-				
-			sendCommand(c);
-			
-			while (keepRunning && keepWaiting) {
-				try {
-					wait(5000);
-					keepWaiting = false; 
-				} catch (InterruptedException e) {
-				}				
-			}
-			
-			if (! replied) {
-				keepRunning = false;
-				log.warning("Hardware didn't reply. Failed!");
-				startFailed(c, true);
-			} else if (! ack) {
-				log.warning("Hardware didn't ACK. Failed");
-				startFailed(c, false);
-			}
-			
-			return replied;
-		}
-
-		public synchronized void ack() {
-			log.finer("ACK");
-			replied = true;
-			keepWaiting = false;
-			ack = true;
-			notify();
-		}
-		
-		public synchronized void nack() {
-			log.fine("NACK");
-			replied = true;
-			keepRunning = false;
-			ack = false;
-			notify();
-		}
-		
-		@Override
-		public void run() {
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-			}
-			
-			if (!sendAndWait(new Command(CMD_HELLO, 0))) return;
-			log.finer("HELLO ACK");
-
-			if (!sendAndWait(new Command(CMD_SET_NESC, escs.size()))) return;
-			log.finer("SET_NESC ACK");
-
-			if (! sendAndWait(new Command(CMD_SET_TMIN, throttleMin))) return;
-			log.finer("SET_TMIN ACK");
-
-			if (! sendAndWait(new Command(CMD_SET_TMAX, throttleMax))) return;
-			log.finer("SET_TMAX ACK");
-
-			if (! sendAndWait(new Command(CMD_SET_TMODE, throttleMode))) return;
-			log.finer("SET_TMODE ACK");
-
-			if (! sendAndWait(new Command(CMD_START, 0))) return;
-			log.finer("START ACK");
-			
-			startCompleted();
-		}	
-	}
-	
-	private static Logger log = null;
-	private static final int LOGLEVEL = Logger.FINER;
+	public static Logger log = null;
+	private static final int LOGLEVEL = Logger.FINE;
 	private static final String LOGNAME = "it.picciux.castle.linklive";
+	
+	public static final String VERSION = "0.1.0rc1";
+	public static final int VERSION_NUMBER = 0;
 	
 	/**
 	 * Integer constant indicating that the ESC interface has to generate throttle 
@@ -282,8 +299,7 @@ public class CastleLinkLive {
 	private boolean armed = false;
 	private boolean throttlePresent = false;
 	
-	private ThrottleThread throttleThread;
-	private StartThread startThread;
+	private ESCInterfaceThread escInterfaceThread;
 	
 	private OutputStream outStream;
 	
@@ -313,14 +329,14 @@ public class CastleLinkLive {
 		}			
 	}
 	
-	private void startFailed(Command command, boolean timeout) {
-		startThread = null;
+	private void escFailed(Command command, boolean timeout) {
+		escInterfaceThread = null;
 		String reason = "";
 		
 		if (! timeout) {
 			switch(command.id) {
 				case CMD_HELLO:
-					reason = "ESC interface didn't respond to out handshake";
+					reason = "ESC interface didn't respond to our handshake";
 					break;
 				case CMD_SET_NESC:
 					reason = "Cannot set n.ESC to " + command.value; 
@@ -359,6 +375,18 @@ public class CastleLinkLive {
 			case CMD_START:
 				reason += "start command"; 
 				break;
+			case CMD_SET_THROTTLE:
+				reason += "set throttle command";
+				break;
+			case CMD_ARM:
+				reason += "arm command";
+				break;
+			case CMD_DISARM:
+				reason += "disarm command";
+				break;
+			case CMD_NOOP:
+				reason += "noop command";
+				break;
 			}
 		}
 		
@@ -366,9 +394,6 @@ public class CastleLinkLive {
 	}
 	
 	private void startCompleted() {
-		startThread = null;
-		throttleThread = new ThrottleThread();
-		throttleThread.start();		
 		if (eventHandler != null) eventHandler.connectionEvent(true);
 	}
 
@@ -432,11 +457,11 @@ public class CastleLinkLive {
 					break;
 					
 				case CLLCommProtocol.TYPE_RESPONSE:
-					if ( (! connected) && (startThread != null) ) {
+					if ( (escInterfaceThread != null) ) {
 						if (parser.getResponse() == RESPONSE_ACK)
-							startThread.ack();
+							escInterfaceThread.ack();
 						else
-							startThread.nack();
+							escInterfaceThread.nack();
 					}
 						
 					break;
@@ -555,7 +580,7 @@ public class CastleLinkLive {
 		throttle = 50;
 		armed = true;
 		
-		throttleThread.postCommand(new Command(CMD_ARM, 0));
+		escInterfaceThread.postCommand(new Command(CMD_ARM, 0));
 	}
 
 	/**
@@ -567,8 +592,8 @@ public class CastleLinkLive {
 		
 		armed = false;
 		
-		if (throttleThread != null)
-			throttleThread.postCommand(new Command(CMD_DISARM, 0));
+		if (escInterfaceThread != null)
+			escInterfaceThread.postCommand(new Command(CMD_DISARM, 0));
 	}
 	
 	/**
@@ -582,15 +607,23 @@ public class CastleLinkLive {
 	 * @param throttleMode can be {@link CastleLinkLive#SOFTWARE_THROTTLE} or {@link CastleLinkLive#EXTERNAL_THROTTLE}
 	 * @param nESC number of ESCs the interface is connected to
 	 * @return true
+	 * @throws InvalidArgumentException if any of the arguments is not valid or out of bounds
 	 */
-	public boolean start(int throttleMode, int nESC) {
-		this.throttleMode = throttleMode; //TODO condition param
+	public boolean start(int throttleMode, int nESC) throws InvalidArgumentException {
+		if ( (throttleMode != SOFTWARE_THROTTLE) && (throttleMode != EXTERNAL_THROTTLE) )
+			throw new InvalidArgumentException(throttleMode + " is not a valid throttleMode");
+
+		this.throttleMode = throttleMode;
+		
+		if (nESC < 1 || nESC > 2) 
+			throw new InvalidArgumentException("We support 1 or 2 ESC");
+		
 		escs.clear();
 		for (int i = 0; i < nESC; i++)
 			escs.add(new CastleESC());
 		
-		startThread = new StartThread();
-		startThread.start();
+		escInterfaceThread = new ESCInterfaceThread();
+		escInterfaceThread.start();		
 		
 		return true;
 	}
@@ -599,7 +632,7 @@ public class CastleLinkLive {
 	 * Cancels a session start attempt.
 	 */
 	public void cancelStart() {
-		if (startThread != null) startThread.cancel();
+		if (escInterfaceThread != null) escInterfaceThread.cancel();
 	}
 		
 	/**
@@ -608,17 +641,17 @@ public class CastleLinkLive {
 	 * with ESC interface)
 	 */
 	public void stop() {
-		if (throttleThread != null && throttleThread.isRunning()) {
+		if (escInterfaceThread != null && escInterfaceThread.isRunning()) {
 			if (armed) {
-				throttleThread.postCommand(new Command(CMD_DISARM, 0));
+				escInterfaceThread.postCommand(new Command(CMD_DISARM, 0));
 				try {
 					Thread.sleep(500);
 				} catch (InterruptedException e) {
 				}
 				armed = false;
 			}
-			throttleThread.terminate();
-			throttleThread = null;
+			escInterfaceThread.terminate();
+			escInterfaceThread = null;
 			throttlePresent = false;
 		}
 		
@@ -661,6 +694,10 @@ public class CastleLinkLive {
 	 */
 	public int getThrottleMode() {
 		return throttleMode;
+	}
+
+	public boolean isConnected() {
+		return connected;
 	}
 	
 }

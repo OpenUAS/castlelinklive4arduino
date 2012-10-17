@@ -77,8 +77,16 @@ public class CLLCommProtocol {
 		
 		if (cnt % 2 != 0) { //odd byte => MSB byte: save it for later
 			h_buffer = b;
+
+			if (cnt == DATA_FRAME_CNT * 2 + 3) { //final checksum!
+				cnt = 0;
+				boolean checksum_ok = (checksum == h_buffer);
+				checksum = 0;
+				return checksum_ok;
+			}			
+		
 		} else {			// even byte => LSB byte: combine with buffer to get value
-			if (cnt == 2) { 
+			if (cnt == 2) {
 				if ( (h_buffer == CastleLinkLive.HEADER_DATAIN_H) && (( b & CastleLinkLive.HEADER_DATAIN_MASK ) == CastleLinkLive.HEADER_DATAIN_L)) {
 					type = TYPE_ESCDATA;
 					id = (b & CastleLinkLive.ESC_ID_MASK); //store the ESC id
@@ -97,16 +105,7 @@ public class CLLCommProtocol {
 					checksum = 0;
 					return false;
 				}
-			} else if (cnt == DATA_FRAME_CNT * 2 + 4) { //final checksum!
-				cnt = 0;
-				int l_checksum = checksum;
-				checksum = 0;
-				
-				return (l_checksum == h_buffer);
 			} else {
-				/*if (cnt == 4)
-					checksum = h_buffer; //init checksum
-				else*/
 				checksum ^= h_buffer;
 				checksum ^= b;
 				ticks[cnt / 2 - 2] = (h_buffer << 8) + b;
