@@ -27,9 +27,18 @@ package it.picciux.castle.linklive;
 //import java.util.logging.Logger;
 
 /**
- * Class representing a Castle Creations ESC
+ * Class representing a Castle Creations ESC and its telemetry data
+ * as provided by the ESC itself.
+ * You should not have any need to instantiate it by yourself: objects
+ * of this class are instantiated by {@link CastleLinkLive} class and 
+ * can be obtained by calling {@link CastleLinkLive#getESC(int)}
+ * or are returned by {@link ICastleLinkLiveEvent#dataUpdated(int, CastleESC)}
+ * callback when ESC-related data is updated
+ * 
  * @author Matteo Piscitelli
- *
+ * @see CastleLinkLive
+ * @see CastleLinkLive#setEventHandler(ICastleLinkLiveEvent)
+ * @see ICastleLinkLiveEvent
  */
 public class CastleESC {
 	private double voltage;
@@ -78,7 +87,7 @@ public class CastleESC {
 	
 	/**
 	 * 
-	 * @return the configured motor poles number to calc shaft RPM.
+	 * @return the configured motor poles number to calculate shaft RPM.
 	 */
 	public int getMotorPoles() {
 		return rpmDivider * 2;
@@ -179,8 +188,8 @@ public class CastleESC {
 	}
 	
 	/**
-	 * Gets a {@link CLLCommProtocol} object as a parameter and will calculate
-	 * readable ESC data basing on its data.
+	 * Accepts a {@link CLLCommProtocol} object as a parameter and will calculate
+	 * readable ESC data based on its data.
 	 * @param data a CLLCommProtocol object
 	 * @return true if some data in the ESC is updated, false otherwise.
 	 * @throws InvalidDataException if data contained in DataParser is 

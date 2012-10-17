@@ -59,6 +59,11 @@ import it.picciux.commlayer.log.LoggerException;
  * @author Matteo Piscitelli
  */
 public class CastleLinkLive {
+	/**
+	 * Internal class to hold commands to ESC interface
+	 * @author Matteo Piscitelli
+	 *
+	 */
 	private class Command {
 		public Command(int id, int value) {
 			super();
@@ -66,10 +71,23 @@ public class CastleLinkLive {
 			this.value = value;
 		}
 		
+		/**
+		 * Command id
+		 * @see CLLCommProtocol
+		 */
 		public int id;
+		
+		/**
+		 * Command value (if any)
+		 */
 		public int value;
 	}
 	
+	/**
+	 * Thread to command the ESC interface
+	 * @author Matteo Piscitelli
+	 *
+	 */
 	private class ESCInterfaceThread extends Thread {
 		private boolean keepRunning = true;
 		private boolean keepWaiting = false;
@@ -94,15 +112,19 @@ public class CastleLinkLive {
 		
 		public synchronized void terminate() {
 			keepRunning = false;
-			
-			/* 
-			 * force replied to avoid to notify failure when thread is terminated 
-			 * while it's waiting for a reply
-			 */
-			replied = true; 
-			interrupt();
 		}
 
+		/* NOT NEEDED ATM
+		public synchronized void forceTermination() {
+			keepRunning = false;
+			
+			//force replied to avoid to notify failure when thread is terminated 
+			//while it's waiting for a reply
+			replied = true; 
+			interrupt();			
+		}
+		*/
+		
 		public synchronized void cancel() {
             keepRunning = false;
             interrupt();
@@ -110,6 +132,8 @@ public class CastleLinkLive {
 		
 		public synchronized void ack() {
 			log.finer("ACK " + waitingCommandID);
+			if (waitingCommandID == CLLCommProtocol.CMD_ARM) setArmed(true);
+			if (waitingCommandID == CLLCommProtocol.CMD_DISARM) setArmed(false);
 			replied = true;
 			keepWaiting = false;
 			ack = true;
@@ -136,6 +160,10 @@ public class CastleLinkLive {
 			return c;
 		}
 		
+		public synchronized int getCommandsInQueueCount() {
+			return cmdQueue.size();
+		}
+		
 		private synchronized boolean sendAndWait(Command c, int timeout) {
 			if (c == null) return true;
 			
@@ -144,14 +172,14 @@ public class CastleLinkLive {
 			keepWaiting = true;
 			replied = false;
 			
-			if (! keepRunning) return false; 
+			/*if (! keepRunning) return false;*/ 
 				
 			sendCommand(c);
 			
 			int toWait = timeout;
 			long waitStart = System.currentTimeMillis();
 
-			while (keepRunning && keepWaiting) {
+			while (/*keepRunning &&*/ keepWaiting) {
 				try {
 					wait(toWait);
 					keepWaiting = false; 
@@ -184,50 +212,59 @@ public class CastleLinkLive {
 			} catch (InterruptedException e) {
 			}
 			
-			log.finer("Sending HELLO (" + CMD_HELLO + ")");
-			if (!sendAndWait(new Command(CMD_HELLO, 0), START_TIMEOUT)) return;
+			log.finer("Sending HELLO (" + CLLCommProtocol.CMD_HELLO + ")");
+			if (!sendAndWait(new Command(CLLCommProtocol.CMD_HELLO, 0), START_TIMEOUT)) return;
 
-			log.finer("Sending SET_NESC (" + CMD_SET_NESC + ") " + escs.size());
-			if (!sendAndWait(new Command(CMD_SET_NESC, escs.size()), START_TIMEOUT)) return;
+			log.finer("Sending SET_NESC (" + CLLCommProtocol.CMD_SET_NESC + ") " + escs.size());
+			if (!sendAndWait(new Command(CLLCommProtocol.CMD_SET_NESC, escs.size()), START_TIMEOUT)) return;
 
-			log.finer("Sending SET_TMIN (" + CMD_SET_TMIN + ") " + throttleMin);
-			if (! sendAndWait(new Command(CMD_SET_TMIN, throttleMin), START_TIMEOUT)) return;
+			log.finer("Sending SET_TMIN (" + CLLCommProtocol.CMD_SET_TMIN + ") " + throttleMin);
+			if (! sendAndWait(new Command(CLLCommProtocol.CMD_SET_TMIN, throttleMin), START_TIMEOUT)) return;
 
-			log.finer("Sending SET_TMAX (" + CMD_SET_TMAX + ") " + throttleMax);
-			if (! sendAndWait(new Command(CMD_SET_TMAX, throttleMax), START_TIMEOUT)) return;
+			log.finer("Sending SET_TMAX (" + CLLCommProtocol.CMD_SET_TMAX + ") " + throttleMax);
+			if (! sendAndWait(new Command(CLLCommProtocol.CMD_SET_TMAX, throttleMax), START_TIMEOUT)) return;
 
-			log.finer("Sending SET_TMODE (" + CMD_SET_TMODE + ") " + throttleMode);
-			if (! sendAndWait(new Command(CMD_SET_TMODE, throttleMode), START_TIMEOUT)) return;
+			log.finer("Sending SET_TMODE (" + CLLCommProtocol.CMD_SET_TMODE + ") " + throttleMode);
+			if (! sendAndWait(new Command(CLLCommProtocol.CMD_SET_TMODE, throttleMode), START_TIMEOUT)) return;
 
-			log.finer("Sending START (" + CMD_START + ") " );
-			if (! sendAndWait(new Command(CMD_START, 0), START_TIMEOUT)) return;
+			log.finer("Sending START (" + CLLCommProtocol.CMD_START + ") " );
+			if (! sendAndWait(new Command(CLLCommProtocol.CMD_START, 0), START_TIMEOUT)) return;
 			
 			startCompleted();
 			
-			while (isRunning()) {
-				sendAndWait(commandInQueue(), RUN_TIMEOUT);
+			while (isRunning() || (getCommandsInQueueCount() > 0) ) {
+				if (!sendAndWait(commandInQueue(), RUN_TIMEOUT)) break;
 				
-				if (isArmed() && throttleMode == SOFTWARE_THROTTLE)
-					sendAndWait(new Command(CMD_SET_THROTTLE, throttle), RUN_TIMEOUT);
-				else
-					sendAndWait(new Command(CMD_NOOP, 0), RUN_TIMEOUT);
+				if (isArmed() && throttleMode == SOFTWARE_THROTTLE) {
+					if (!sendAndWait(new Command(CLLCommProtocol.CMD_SET_THROTTLE, throttle), RUN_TIMEOUT)) break;
+				} else {
+					if (!sendAndWait(new Command(CLLCommProtocol.CMD_NOOP, 0), RUN_TIMEOUT)) break;
+				}
 				
 				try {
 					Thread.sleep(100);
 				} catch (InterruptedException e) {
+					log.finest("ESCInterface thread interrupted!");
 				}
 
 			}
-			
-			if (eventHandler != null) eventHandler.connectionEvent(false);
+
+			stopCompleted();
 		}	
 	}
 
 	public static Logger log = null;
-	private static final int LOGLEVEL = Logger.FINE;
+	private static final int LOGLEVEL = Logger.FINEST;
 	private static final String LOGNAME = "it.picciux.castle.linklive";
 	
+	/**
+	 * Library version
+	 */
 	public static final String VERSION = "0.1.0rc1";
+	
+	/**
+	 * Library progressive version number
+	 */
 	public static final int VERSION_NUMBER = 0;
 	
 	/**
@@ -246,63 +283,93 @@ public class CastleLinkLive {
 	 */
 	public static final int EXTERNAL_THROTTLE = 0;
 	
+	/**
+	 * Default value for throttle pulse length corresponding to
+	 * idle/break (in microseconds)
+	 */
 	public static final int DEFAULT_THROTTLE_MIN = 1000; //micro seconds
+	
+	/**
+	 * Default value for throttle pulse length corresponding to 
+	 * full throttle (in microseconds)
+	 */
 	public static final int DEFAULT_THROTTLE_MAX = 2000; //micro seconds
 
+	/**
+	 * Absolute minimum pulse length for idle throttle
+	 */
 	public static final int ABSOLUTE_THROTTLE_MIN = 750; //micro seconds
+	
+	/**
+	 * Absolute maximum pulse length for full throttle
+	 */
 	public static final int ABSOLUTE_THROTTLE_MAX = 2250; //micro seconds
 	
-	public static final int HEADER_DATAIN_H		    = 0xFF;
-	
-	/* LS byte in header is actually header and data:
-	 *  bit 0-2: ESC id (1->7)
-	 *  bit 3  : external throttle presence (1 present, 0 not present/invalid)
+	/**
+	 * Vector holding {@link CastleESC} objects to store and return data
 	 */
-	public static final int HEADER_DATAIN_L			= 0xF0; // 1111 0000
-	
-	public static final int HEADER_DATAIN_MASK		= 0xF0; // 1111 0000
-	public static final int ESC_ID_MASK				= 0x07; // 0000 0111
-	public static final int THROTTLE_PRESENT_MASK	= 0x08; // 0000 1000
-	
-	public static final int HEADER_RESPONSE_H		= 0x55; // 0101 0101
-	public static final int HEADER_RESPONSE_L		= 0xAA; // 1010 1010
-	
-	public static final int HEADER_RESPONSE_MASK	= 0xFE; // 1111 1110
-	public static final int RESPONSE_MASK			= 0x01; // 0000 0001
-	
-	public static final int OUT_HEADER			= 0x00;
-	public static final int CMD_NOOP			= 0x00;
-	public static final int CMD_HELLO			= 0x01;
-	public static final int CMD_SET_TMIN		= 0x02;
-	public static final int CMD_SET_TMAX		= 0x03;
-	public static final int CMD_SET_TMODE		= 0x04;
-	public static final int CMD_SET_NESC		= 0x05;
-	public static final int CMD_START			= 0x06;
-	public static final int CMD_ARM				= 0x07;
-	public static final int CMD_SET_THROTTLE	= 0x08;
-	public static final int CMD_DISARM			= 0x09;
-	
-	public static final int RESPONSE_ACK		= 0x01;
-	public static final int RESPONSE_NACK		= 0x00;
-	
-	//private int nESC = 1;
 	private Vector<CastleESC> escs = new Vector<CastleESC>();
+	
+	/**
+	 * Protocol data parser
+	 */
 	private CLLCommProtocol parser = new CLLCommProtocol();
+	
+	/**
+	 * Event-handler to be set by user
+	 */
 	private ICastleLinkLiveEvent eventHandler = null;
+	
+	/**
+	 * Throttle mode (defaults to software generated throttle signal)
+	 */
 	private int throttleMode = SOFTWARE_THROTTLE;
+	
+	/**
+	 * Throttle value to be sent to ESC interface
+	 */
 	private int throttle = 50;
 	
+	/**
+	 * throttle pulse length for idle/brake
+	 */
 	private int throttleMin = DEFAULT_THROTTLE_MIN;
+	
+	/**
+	 * throttle pulse lenght for full throttle
+	 */
 	private int throttleMax = DEFAULT_THROTTLE_MAX;
 	
+	/**
+	 * Connection status to ESC interface
+	 */
 	private boolean connected = false;
+	
+	/**
+	 * Whether the ESC interface is armed or not
+	 */
 	private boolean armed = false;
+	
+	/**
+	 * Throttle state (present/valid vs not-present/invalid) as
+	 * reported by the ESC interface
+	 */
 	private boolean throttlePresent = false;
 	
+	/**
+	 * reference to the running ESCInterfaceThread
+	 */
 	private ESCInterfaceThread escInterfaceThread;
 	
+	/**
+	 * The output stream to use when sending data to the ESC interface
+	 */
 	private OutputStream outStream;
 	
+	/**
+	 * Sends a {@link Command} to the ESC interface
+	 * @param command
+	 */
 	private void sendCommand(Command command) {
 		if (command == null) return;
 
@@ -312,7 +379,7 @@ public class CastleLinkLive {
 				0x00, 0x00, 0x00
 		};
 		
-		int checksum = OUT_HEADER;
+		int checksum = CLLCommProtocol.OUT_HEADER;
 		buf[0] = command.id;
 		buf[1] = command.value & 0xFF;
 		buf[2] = (command.value >> 8) & 0xFF;
@@ -329,62 +396,68 @@ public class CastleLinkLive {
 		}			
 	}
 	
+	/**
+	 * Called by {@link ESCInterfaceThread} when ESC interface
+	 * didn't reply or NACKed our command
+	 * @param command the failed command
+	 * @param timeout whether was a timeout or NACKed condition
+	 */
 	private void escFailed(Command command, boolean timeout) {
 		escInterfaceThread = null;
 		String reason = "";
 		
 		if (! timeout) {
 			switch(command.id) {
-				case CMD_HELLO:
+				case CLLCommProtocol.CMD_HELLO:
 					reason = "ESC interface didn't respond to our handshake";
 					break;
-				case CMD_SET_NESC:
+				case CLLCommProtocol.CMD_SET_NESC:
 					reason = "Cannot set n.ESC to " + command.value; 
 					break;
-				case CMD_SET_TMAX:
+				case CLLCommProtocol.CMD_SET_TMAX:
 					reason = "Cannot set throttle maximum to " + command.value; 
 					break;
-				case CMD_SET_TMIN:
+				case CLLCommProtocol.CMD_SET_TMIN:
 					reason = "Cannot set throttle minimum to " + command.value; 
 					break;
-				case CMD_SET_TMODE:
+				case CLLCommProtocol.CMD_SET_TMODE:
 					reason = "Cannot set throttle mode to " + command.value; 
 					break;
-				case CMD_START:
+				case CLLCommProtocol.CMD_START:
 					reason = "ESC interface didn't start";
 					break;
 			}
 		} else {
 			reason = "ESC interface didn't respond to our ";
 			switch(command.id) {
-			case CMD_HELLO:
+			case CLLCommProtocol.CMD_HELLO:
 				reason += "handshake";
 				break;
-			case CMD_SET_NESC:
+			case CLLCommProtocol.CMD_SET_NESC:
 				reason += "set n. ESC"; 
 				break;
-			case CMD_SET_TMAX:
+			case CLLCommProtocol.CMD_SET_TMAX:
 				reason += "set throttle maximum"; 
 				break;
-			case CMD_SET_TMIN:
+			case CLLCommProtocol.CMD_SET_TMIN:
 				reason += "set throttle minimum"; 
 				break;
-			case CMD_SET_TMODE:
+			case CLLCommProtocol.CMD_SET_TMODE:
 				reason += "set throttle mode"; 
 				break;
-			case CMD_START:
+			case CLLCommProtocol.CMD_START:
 				reason += "start command"; 
 				break;
-			case CMD_SET_THROTTLE:
+			case CLLCommProtocol.CMD_SET_THROTTLE:
 				reason += "set throttle command";
 				break;
-			case CMD_ARM:
+			case CLLCommProtocol.CMD_ARM:
 				reason += "arm command";
 				break;
-			case CMD_DISARM:
+			case CLLCommProtocol.CMD_DISARM:
 				reason += "disarm command";
 				break;
-			case CMD_NOOP:
+			case CLLCommProtocol.CMD_NOOP:
 				reason += "noop command";
 				break;
 			}
@@ -393,11 +466,27 @@ public class CastleLinkLive {
 		if (eventHandler != null) eventHandler.connectionError(reason);
 	}
 	
+	/**
+	 * Called by {@link ESCInterfaceThread} when it completed
+	 * connection procedure to ESC interface
+	 */
 	private void startCompleted() {
+		setConnected(true);
 		if (eventHandler != null) eventHandler.connectionEvent(true);
 	}
 
-
+	/**
+	 * Called by {@link ESCInterfaceThread} at thread code termination
+	 */
+	private void stopCompleted() {
+		setConnected(false);
+		if (eventHandler != null) eventHandler.connectionEvent(false);
+		escInterfaceThread = null;
+	}
+	
+	/**
+	 * Class constructor
+	 */
 	public CastleLinkLive() {
 		try {
 			log = Logger.getLogger(LOGNAME, Logger.CONSOLE, null);
@@ -458,7 +547,7 @@ public class CastleLinkLive {
 					
 				case CLLCommProtocol.TYPE_RESPONSE:
 					if ( (escInterfaceThread != null) ) {
-						if (parser.getResponse() == RESPONSE_ACK)
+						if (parser.getResponse() == CLLCommProtocol.RESPONSE_ACK)
 							escInterfaceThread.ack();
 						else
 							escInterfaceThread.nack();
@@ -499,6 +588,7 @@ public class CastleLinkLive {
 
 	/**
 	 * @return the number of Castle Creation ESCs connected to the hardware interface
+	 * (as set by {@link CastleLinkLive#start(int, int)} method)
 	 */
 	public int getnESC() {
 		return escs.size();
@@ -515,7 +605,6 @@ public class CastleLinkLive {
 	}
 
 	/**
-	 * 
 	 * @return throttle pulse duration corresponding to min throttle (in microseconds)
 	 */
 	public int getThrottleMin() {
@@ -523,7 +612,7 @@ public class CastleLinkLive {
 	}
 
 	/**
-	 * Sets maximum pulse-duration for max throttle (in microseconds).
+	 * Sets pulse-duration for idle throttle (in microseconds).
 	 * 
 	 * @param throttleMin
 	 * @throws InvalidThrottleLimitException if throttleMin specifies a value less than
@@ -547,7 +636,7 @@ public class CastleLinkLive {
 	}
 
 	/**
-	 * Sets maximum pulse-duration for max throttle (in microseconds).
+	 * Sets pulse-duration for full throttle (in microseconds).
 	 * 
 	 * @param throttleMax
 	 * @throws InvalidThrottleLimitException if throttleMax specifies a value greater than
@@ -564,23 +653,32 @@ public class CastleLinkLive {
 	}
 
 	/**
-	 * @return whether is generating throttle or considering external throttle.
+	 * @return whether ESC interface is armed
+	 * @see CastleLinkLive#arm()
 	 */
-	public boolean isArmed() {
+	public synchronized boolean isArmed() {
 		return armed;
 	}
 
+	/**
+	 * internal function to thread-safely set armed state
+	 * @param armed
+	 */
+	private synchronized void setArmed(boolean armed) {
+		this.armed = armed;
+	}
+	
 	/**
 	 * Enables the ESC interface to start generating/managing throttle signal,
 	 * whether it is software generated or external
 	 */
 	public void arm() {
-		if (armed) return;
+		if (isArmed()) return;
 		
 		throttle = 50;
-		armed = true;
+		//armed = true;
 		
-		escInterfaceThread.postCommand(new Command(CMD_ARM, 0));
+		escInterfaceThread.postCommand(new Command(CLLCommProtocol.CMD_ARM, 0));
 	}
 
 	/**
@@ -588,12 +686,12 @@ public class CastleLinkLive {
 	 * whether it is software generated or external
 	 */
 	public void disarm() {
-		if (! armed) return;
+		if (! isArmed()) return;
 		
-		armed = false;
+		//armed = false;
 		
 		if (escInterfaceThread != null)
-			escInterfaceThread.postCommand(new Command(CMD_DISARM, 0));
+			escInterfaceThread.postCommand(new Command(CLLCommProtocol.CMD_DISARM, 0));
 	}
 	
 	/**
@@ -632,7 +730,8 @@ public class CastleLinkLive {
 	 * Cancels a session start attempt.
 	 */
 	public void cancelStart() {
-		if (escInterfaceThread != null) escInterfaceThread.cancel();
+		if (escInterfaceThread != null && escInterfaceThread.isRunning() && (! isConnected())) 
+			escInterfaceThread.cancel();
 	}
 		
 	/**
@@ -642,20 +741,17 @@ public class CastleLinkLive {
 	 */
 	public void stop() {
 		if (escInterfaceThread != null && escInterfaceThread.isRunning()) {
-			if (armed) {
-				escInterfaceThread.postCommand(new Command(CMD_DISARM, 0));
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e) {
-				}
-				armed = false;
-			}
+			if (isArmed()) 
+				escInterfaceThread.postCommand(new Command(CLLCommProtocol.CMD_DISARM, 0));
+
+			//ESCInterfaceThread will set armed status when DISARM ACKed
+			//setArmed(false);
+			
 			escInterfaceThread.terminate();
-			escInterfaceThread = null;
 			throttlePresent = false;
 		}
 		
-		//throttle thread signals disconnection to eventHandler at thread termination
+		//throttle thread signals disconnection at thread termination calling stopCompleted
 	}
 	
 	/**
@@ -696,8 +792,18 @@ public class CastleLinkLive {
 		return throttleMode;
 	}
 
-	public boolean isConnected() {
+	/**
+	 * @return whether CastleLinkLive is connected to the ESC interface
+	 */
+	public synchronized boolean isConnected() {
 		return connected;
 	}
 	
+	/**
+	 * internal function to set thread-safely set connected state
+	 * @param connected
+	 */
+	private synchronized void setConnected(boolean connected) {
+		this.connected = connected;
+	}
 }

@@ -24,14 +24,15 @@
 
 package it.picciux.castle.linklive;
 
-//import java.util.logging.Logger;
-
 /**
- * Class implementing communication protocol with CastleLinkLiveSerialMonitor
- * @author 00688263
- *
+ * Class implementing communication protocol with CastleLinkLiveSerialMonitor.
+ * This class is not meant to be instantiated by library users: it's used internally
+ * by {@link CastleLinkLive}
+ * @author Matteo Piscitelli
+ * @see CastleLinkLive
  */
 public class CLLCommProtocol {
+	/* DATA FRAME IDs */
 	public static final int FRAME_RESET 		= -1;
 	public static final int FRAME_REFERENCE     =  0;
 	public static final int FRAME_VOLTAGE       =  1;
@@ -48,8 +49,47 @@ public class CLLCommProtocol {
 	
 	public static final int NO_ESC = -1;
 	
+	/* DATA TYPES */
 	public static final int TYPE_ESCDATA = 0;
 	public static final int TYPE_RESPONSE = 1;
+	
+	/* DATA TRANSMISSION HEADERS AND MASKS */
+	public static final int HEADER_DATAIN_H		    = 0xFF;
+	
+	/* LS byte in header is actually header and data:
+	 *  bit 0-2: ESC id (1->7)
+	 *  bit 3  : external throttle presence (1 present, 0 not present/invalid)
+	 */
+	public static final int HEADER_DATAIN_L			= 0xF0; // 1111 0000
+	
+	public static final int HEADER_DATAIN_MASK		= 0xF0; // 1111 0000
+	public static final int ESC_ID_MASK				= 0x07; // 0000 0111
+	public static final int THROTTLE_PRESENT_MASK	= 0x08; // 0000 1000
+	
+	public static final int HEADER_RESPONSE_H		= 0x55; // 0101 0101
+	public static final int HEADER_RESPONSE_L		= 0xAA; // 1010 1010
+	
+	public static final int HEADER_RESPONSE_MASK	= 0xFE; // 1111 1110
+	public static final int RESPONSE_MASK			= 0x01; // 0000 0001
+	
+	public static final int OUT_HEADER			= 0x00;
+
+	/* COMMAND IDENTIFIERS */
+	public static final int CMD_NOOP			= 0x00;
+	public static final int CMD_HELLO			= 0x01;
+	public static final int CMD_SET_TMIN		= 0x02;
+	public static final int CMD_SET_TMAX		= 0x03;
+	public static final int CMD_SET_TMODE		= 0x04;
+	public static final int CMD_SET_NESC		= 0x05;
+	public static final int CMD_START			= 0x06;
+	public static final int CMD_ARM				= 0x07;
+	public static final int CMD_SET_THROTTLE	= 0x08;
+	public static final int CMD_DISARM			= 0x09;
+	
+	/* RESPONSE ACK/NACK VALUES */
+	public static final int RESPONSE_ACK		= 0x01;
+	public static final int RESPONSE_NACK		= 0x00;
+	
 	
 	private int[] ticks = new int[DATA_FRAME_CNT];
 	private int type = TYPE_ESCDATA;
@@ -60,8 +100,6 @@ public class CLLCommProtocol {
 	private int h_buffer;
 	private int cnt = 0;
 	private int checksum = 0;
-	
-	//private static Logger log = Logger.getLogger("it.picciux.castle.linklive.CLLCommProtocol");
 	
 	public int getTicks(int index) {
 		if (index >= 0 && index < DATA_FRAME_CNT)
@@ -78,7 +116,7 @@ public class CLLCommProtocol {
 		if (cnt % 2 != 0) { //odd byte => MSB byte: save it for later
 			h_buffer = b;
 
-			if (cnt == DATA_FRAME_CNT * 2 + 3) { //final checksum!
+			if (cnt == DATA_FRAME_CNT * 2 + 3) { //DATA block completed
 				cnt = 0;
 				boolean checksum_ok = (checksum == h_buffer);
 				checksum = 0;
@@ -87,15 +125,15 @@ public class CLLCommProtocol {
 		
 		} else {			// even byte => LSB byte: combine with buffer to get value
 			if (cnt == 2) {
-				if ( (h_buffer == CastleLinkLive.HEADER_DATAIN_H) && (( b & CastleLinkLive.HEADER_DATAIN_MASK ) == CastleLinkLive.HEADER_DATAIN_L)) {
+				if ( (h_buffer == HEADER_DATAIN_H) && (( b & HEADER_DATAIN_MASK ) == HEADER_DATAIN_L)) {
 					type = TYPE_ESCDATA;
-					id = (b & CastleLinkLive.ESC_ID_MASK); //store the ESC id
-					throttlePresent = ( (b & CastleLinkLive.THROTTLE_PRESENT_MASK) > 0 ); //store throttle presence
+					id = (b & ESC_ID_MASK); //store the ESC id
+					throttlePresent = ( (b & THROTTLE_PRESENT_MASK) > 0 ); //store throttle presence
 					checksum = h_buffer;
 					checksum ^= b;
-				} else if ( (h_buffer == CastleLinkLive.HEADER_RESPONSE_H) && ((b & CastleLinkLive.HEADER_RESPONSE_MASK) == CastleLinkLive.HEADER_RESPONSE_L) )  {
+				} else if ( (h_buffer == HEADER_RESPONSE_H) && ((b & HEADER_RESPONSE_MASK) == HEADER_RESPONSE_L) )  {
 					type = TYPE_RESPONSE;
-					response = b & CastleLinkLive.RESPONSE_MASK;
+					response = b & RESPONSE_MASK;
 					cnt = 0;
 					checksum = 0;
 					return true;
@@ -115,6 +153,9 @@ public class CLLCommProtocol {
 		return false;
 	}
 
+	/**
+	 * @return the 0-based index of the ESC whose data is parsed last
+	 */
 	public int getId() {
 		return id;
 	}
@@ -128,14 +169,18 @@ public class CLLCommProtocol {
 	}
 
 	/**
-	 * @return the response
+	 * @return last response received from the ESC interface
 	 */
 	public int getResponse() {
 		return response;
 	}
 
 	/**
-	 * @return the type
+	 * @return the type of data the parser finished parsing last: 
+	 * {@link CLLCommProtocol#TYPE_ESCDATA} if data was ESC telemetry data or
+	 * {@link CLLCommProtocol#TYPE_RESPONSE} if data was a response to a previously
+	 * issued command
+	 * @see CastleLinkLive 
 	 */
 	public int getType() {
 		return type;
