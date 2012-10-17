@@ -283,7 +283,7 @@ public class CastleLinkLiveMonitor {
 					connect();
 				} else {
 					cll.stop();
-					layer.disconnect();
+					//layer.disconnect();
 				}
 			}
 		});
@@ -295,7 +295,8 @@ public class CastleLinkLiveMonitor {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				super.widgetSelected(e);
-				if (! armButton.getSelection())
+				//if (! armButton.getSelection())
+				if (cll.isArmed())
 					cll.disarm();
 				else
 					cll.arm();
@@ -366,6 +367,7 @@ public class CastleLinkLiveMonitor {
 	}
 	
 	private static void uiThreadExec(Runnable runnable) {
+		if (mainWin.isDisposed()) return;
 		try {
 			display.syncExec(runnable);
 		} catch (Exception e) {
@@ -488,6 +490,7 @@ public class CastleLinkLiveMonitor {
 					
 					if (appSettings.hrBroadcastPort > 0 && hrNetBroadcaster != null) hrNetBroadcaster.openLog();
 				} else {
+					layer.disconnect();
 					c = KOColor;
 					logText = "CastleLinkLive is not connected";
 					if (appSettings.logType == LOG_HR && dataLogger != null)
@@ -520,6 +523,17 @@ public class CastleLinkLiveMonitor {
 				});
 				
 				layer.disconnect();
+			}
+
+			@Override
+			public void armedEvent(final boolean armed) {
+				//TODO work better arm/disarm UI
+				uiThreadExec(new Runnable() {
+					@Override
+					public void run() {
+						armButton.setSelection(armed);
+					}
+				});
 			}
 		});
 		
@@ -671,10 +685,13 @@ public class CastleLinkLiveMonitor {
 			if (!display.readAndDispatch())
 				display.sleep();
 		
-		log.finer("Stopping cll");
-		cll.stop();
-		log.finer("Disconnecting CommLayer");
-		layer.disconnect();
+		if (cll.isConnected()) {
+			log.fine("Stopping cll");
+			cll.stop();
+		}
+		
+		//log.finer("Disconnecting CommLayer");
+		//layer.disconnect();
 		//cmdThread.terminate();
 		//System.exit(0);
 	}
