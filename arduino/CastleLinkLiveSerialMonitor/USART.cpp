@@ -17,7 +17,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: USART.cpp 45 2012-10-16 14:40:27Z picciux@gmail.com $
  *****************************************************************************/
 
 #include "pins_arduino.h"
@@ -122,3 +122,4 @@ ISR(USART_RX_vect /*, ISR_NOBLOCK */) {
     checksum ^= c;
   
 }
+

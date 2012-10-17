@@ -18,7 +18,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: CastleLinkLiveSerialMonitor.pde 50 2012-10-17 15:11:47Z picciux@gmail.com $
  ******************************************************************************
  *  SAFETY NOTICE
  *  Always keep in mind that an electric motor can be dangerous for you, for 
@@ -275,3 +275,4 @@ void loop() {
   loopCnt = loopCnt % 100;
   delay(loopDelay);
 }
+

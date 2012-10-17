@@ -18,7 +18,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: CastleLinkLiveSerialMonitor.h 36 2012-10-15 17:30:53Z picciux@gmail.com $
  ******************************************************************************/
 
 // Only modify this file to include
@@ -50,3 +50,4 @@ void setup();
 
 //Do not add code below this line
 #endif /* CastleLinkLiveSerialMonitorEx_H_ */
+

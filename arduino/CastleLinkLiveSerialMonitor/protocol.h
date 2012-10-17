@@ -17,7 +17,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: protocol.h 50 2012-10-17 15:11:47Z picciux@gmail.com $
  *****************************************************************************/
 
 
@@ -90,5 +90,6 @@ static inline void commandProcessed() {
 }
 
 COMMAND * getNextCommand();
+
 
 

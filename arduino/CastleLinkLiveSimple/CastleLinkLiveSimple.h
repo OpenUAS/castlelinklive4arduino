@@ -32,7 +32,7 @@
  *  It's your responsibility to keep things safe. Developers of this software
  *  can't be considered liable for any possible damage will result from its use.
  *
- *  SVN $Id$
+ *  SVN $Id: CastleLinkLiveSimple.h 35 2012-10-15 17:29:44Z picciux@gmail.com $
  ******************************************************************************/
 
  // Only modify this file to include
