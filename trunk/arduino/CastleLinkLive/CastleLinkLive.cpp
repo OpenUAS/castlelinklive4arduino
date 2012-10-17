@@ -46,6 +46,7 @@
 #include "pins_arduino.h"
 #include "WProgram.h"
 
+#include "CastleLinkLive_config.h"
 #include "CastleLinkLive.h"
 
 /***************************************
