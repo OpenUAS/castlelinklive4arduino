@@ -43,6 +43,7 @@ import org.eclipse.swt.widgets.Shell;
 import it.picciux.castle.linklive.CastleESC;
 import it.picciux.castle.linklive.CastleLinkLive;
 import it.picciux.castle.linklive.ICastleLinkLiveEvent;
+import it.picciux.castle.linklive.InvalidArgumentException;
 import it.picciux.castle.linklive.InvalidDataException;
 import it.picciux.castle.linklive.InvalidThrottleLimitException;
 import it.picciux.commlayer.CommLayerException;
@@ -575,7 +576,22 @@ public class CastleLinkLiveMonitor {
 								cllConnection.setBackground(ProgressColor);
 							}
 						});
-						cll.start(appSettings.throttleMode, appSettings.nESC);
+						
+						try {
+							cll.start(appSettings.throttleMode, appSettings.nESC);
+						} catch (InvalidArgumentException e1) {
+							log.log(Logger.SEVERE, "CastleLinkLive cannot start", e1);
+							final String exMsg = e1.getMessage();
+							uiThreadExec(new Runnable() {
+								@Override
+								public void run() {
+									MessageBox mb = new MessageBox(mainWin, SWT.ICON_ERROR | SWT.OK);
+									mb.setMessage("CastleLinkLive cannot start: " + exMsg);
+									mb.open();
+								}
+							});							
+						}
+						
 						cll.getESC(0).setMotorPoles(appSettings.motorPoles);
 						break;
 						
