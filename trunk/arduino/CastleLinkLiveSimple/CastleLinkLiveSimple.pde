@@ -18,7 +18,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: CastleLinkLiveSimple.pde 35 2012-10-15 17:29:44Z picciux@gmail.com $
  *****************************************************************************
  *  SAFETY NOTICE
  *  Always keep in mind that an electric motor can be dangerous for you, for 

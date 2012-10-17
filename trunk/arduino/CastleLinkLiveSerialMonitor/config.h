@@ -1,5 +1,5 @@
 /*****************************************************************************
- *  CastleLinkLiveSerialMonitor - config.h
+ *  CastleLinkLiveSerialMonitor - config.h 
  *  Copyright (C) 2012  Matteo Piscitelli
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: config.h 30 2012-10-12 18:39:13Z picciux@gmail.com $
  *****************************************************************************/
 
 
@@ -32,4 +32,5 @@
  * pin (arduino pin 13).
  */
 #define THROTTLE_IN_PIN                 7
+
 

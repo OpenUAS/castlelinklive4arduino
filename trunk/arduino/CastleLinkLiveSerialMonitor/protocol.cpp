@@ -1,6 +1,6 @@
 /*****************************************************************************
- *  CastleLinkLiveSerialMonitor - USART.h
- *  Copyright (C) 2012  Matteo Piscitelli
+ *  CastleLinkLiveSerialMonitor - protocol.cpp
+ *  Copyright (C) 2012 Matteo Piscitelli
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,22 +17,23 @@
  *
  *  For further info, check http://code.google.com/p/castlelinklive4arduino/
  *
- *  SVN $Id$
+ *  SVN $Id: protocol.cpp 50 2012-10-17 15:11:47Z picciux@gmail.com $
  *****************************************************************************/
 
-#ifndef USART_H
-#define USART_H
+#include "WProgram.h"
+#include "USART.h"
+#include "protocol.h"
 
-void txbuf(uint8_t *b, uint16_t count);
-void txstr(char *str);
-void tx(char data);
-unsigned char rx(void);
-unsigned char rx_nb(void);
-void uart_flush_rxbuffer();
-void uart_init(uint16_t baudrate);
+COMMAND cmdToProcess; //store for the to-be-processed command
+volatile uint8_t cmdProcessed = 1; //flag to indicate processed/still-to-process
 
-//define uart enable disable interrupts as macros
-#define uart_enable_interrupt() ( UCSR0B |= _BV(RXCIE0) )
-#define uart_disable_interrupt() ( UCSR0B &= ~( _BV(RXCIE0) ) )
+COMMAND * getNextCommand() {
+  //COMMAND *ret = NULL;
 
-#endif
+  if (! cmdProcessed) { //there's a command to process
+	  return &cmdToProcess;
+  } else
+	  return NULL; //nothing to process
+}
+
+
