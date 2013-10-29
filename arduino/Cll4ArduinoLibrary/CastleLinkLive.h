@@ -90,7 +90,11 @@
 #include "stddef.h"
 #endif
 #include "pins_arduino.h"
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
 #include "WProgram.h"
+#endif
 
 
 #include "CastleLinkLive_config.h"
