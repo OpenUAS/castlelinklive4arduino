@@ -29,7 +29,11 @@
 
 #ifndef CastleLinkLiveSerialMonitor_H_
 #define CastleLinkLiveSerialMonitor_H_
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
 #include "WProgram.h"
+#endif
 //add your includes for the project CastleLinkLiveSerialMonitorEx here
 
 
