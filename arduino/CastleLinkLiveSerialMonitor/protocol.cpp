@@ -20,7 +20,11 @@
  *  SVN $Id: protocol.cpp 50 2012-10-17 15:11:47Z picciux@gmail.com $
  *****************************************************************************/
 
+#if defined(ARDUINO) && ARDUINO >= 100
+#include "Arduino.h"
+#else
 #include "WProgram.h"
+#endif
 #include "USART.h"
 #include "protocol.h"
 
