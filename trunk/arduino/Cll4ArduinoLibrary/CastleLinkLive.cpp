@@ -401,6 +401,10 @@ void CastleLinkLiveLib::throttleDisarm() {
   sei(); 
 }
 
+boolean CastleLinkLiveLib::isThrottleArmed() {
+	return (TIMER_IS_RUNNING() > 0);
+}
+
 void CastleLinkLiveLib::attachThrottlePresenceHandler(void (*ptHandler) (uint8_t) ) {
   throttlePresenceHandler = ptHandler; 
 }

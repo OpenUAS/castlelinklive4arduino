@@ -327,6 +327,13 @@ class CastleLinkLiveLib {
    */
    void throttleDisarm();
    
+   /** \brief get throttle armed/disarmed state
+    *
+    *  Returns true if throttle is armed on the library, false otherwise
+    *  @see throttleArm
+    */
+   boolean isThrottleArmed();
+
    /** \brief Attach a program-defined function to be called by the libray whenever it detects
        throttle signal failure/recovery.
        
