@@ -99,26 +99,10 @@
 
 #include "CastleLinkLive_config.h"
 
-#if defined (__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
-#define MAX_ESCS 2
-#elif defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
-//#define MAX_ESCS 2
-#error "Arduino MEGA is not supported ATM"
-#elif defined (__AVR_ATmega8__)
-//#define MAX_ESCS 1
-#error "Old Arduinos ATmega8-based are not supported ATM"
-#else
-#define MAX_ESCS 0
-#error "MCU not supported"
-#endif
 
 /** \cond */
 #define LIBRARY_VERSION 0.1.0
 /** \endcond */
-
-#ifndef MAX_ESCS
-#define MAX_ESCS 2
-#endif
 
 /** \name CastleLinkLive Data Frames Identifiers
 
@@ -149,6 +133,50 @@
 #define DATA_FRAME_CNT        11   /**< \brief number of data frames (not counting the reset frame) */
 /**@}*/
 
+//private CLL data calculation macros
+#define __CLL_TEMP2_PRELIMINAR_(V) ( V * 63.8125f )
+#define __CLL_TEMP2_FINAL_(V) ( 1.0f / (log(V * 10200.0f / (255 - V) / 10000.0f) / 3455.0f + 1.0f / 298.0f) - 273 )
+
+/** \name CastleLinkLive Data Calculation Macros
+
+	Utility macros to calc telemetry values from CASTLE_RAW_DATA on your own
+ */
+/**@{*/
+#define CLL_GET_REFERENCE(D) ( D[FRAME_REFERENCE] ) /**< \brief get reference from CASTLE_RAW_DATA D */
+#define CLL_GET_OFFSET(D) ( min(D[FRAME_TEMP1], D[FRAME_TEMP2]) ) /**< \brief get offset from CASTLE_RAW_DATA D */
+#define CLL_GET_WHICH_TEMP(D) ( D[FRAME_TEMP1] < D[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 ) /**< \brief get which temp from CASTLE_RAW_DATA D */
+#define CLL_BASE_VALUE(D, I, O) ( (D[I] - O) / ((float) CLL_GET_REFERENCE(D) ) ) /**< \brief get base value from CASTLE_RAW_DATA
+
+																						Base value calculation common to all values
+																						D is CASTLE_RAW_DATA
+																						I is frame identifier for desired value
+																						O is offset (as obtained from CLL_GET_OFFSET(D) )
+ 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 */
+
+#define CLL_CALC_VOLTAGE(V) ( V * 20.0f )	/**< \brief calc final voltage value from base value */
+#define CLL_CALC_RIPPLE_VOLTAGE(V) ( V * 4.0f ) /**< \brief calc final ripple voltage value from base value */
+#define CLL_CALC_CURRENT(V) ( V * 50.0f ) /**< \brief calc final current value from base value */
+#define CLL_CALC_THROTTLE(V) ( V ) /**< \brief calc final throttle value from base value */
+#define CLL_CALC_OUTPUT_POWER(V) ( V * 0.2502f ) /**< \brief calc final output power value from base value */
+#define CLL_CALC_RPM(V) ( V * 20416.7f ) /**< \brief calc final rpm value from base value */
+#define CLL_CALC_BEC_VOLTAGE(V) ( V * 4.0f ) /**< \brief calc final BEC voltage value from base value */
+#define CLL_CALC_BEC_CURRENT(V) ( V * 4.0f ) /**< \brief calc final BEC current value from base value */
+#define CLL_CALC_TEMP1(V) ( V * 30.0f ) /**< \brief calc final temperature 1 value from base value */
+#define CLL_CALC_TEMP2(V) ( V > 3.9f ? -40 : __CLL_TEMP2_FINAL_(__CLL_TEMP2_PRELIMINAR_(V)) ) /**< \brief calc final temperature 2 value from base value */
+
+
+#define CLL_GET_VOLTAGE(D, O) ( CLL_CALC_VOLTAGE(CLL_BASE_VALUE(D, FRAME_VOLTAGE, O)) ) /**< \brief get voltage value from CASTLE_RAW_DATA */
+#define CLL_GET_RIPPLE_VOLTAGE(D, O) ( CLL_CALC_RIPPLE_VOLTAGE(CLL_BASE_VALUE(D, FRAME_RIPPLE_VOLTAGE, O)) ) /**< \brief get ripple voltage value from CASTLE_RAW_DATA */
+#define CLL_GET_CURRENT(D, O) ( CLL_CALC_CURRENT(CLL_BASE_VALUE(D, FRAME_CURRENT, O)) ) /**< \brief get current value from CASTLE_RAW_DATA */
+#define CLL_GET_THROTTLE(D, O) ( CLL_CALC_THROTTLE(CLL_BASE_VALUE(D, FRAME_THROTTLE, O)) ) /**< \brief get throttle value from CASTLE_RAW_DATA */
+#define CLL_GET_OUTPUT_POWER(D, O) ( CLL_CALC_OUTPUT_POWER(CLL_BASE_VALUE(D, FRAME_OUTPUT_POWER, O)) ) /**< \brief get output power value from CASTLE_RAW_DATA */
+#define CLL_GET_RPM(D, O) ( CLL_CALC_RPM(CLL_BASE_VALUE(D, FRAME_RPM, O)) ) /**< \brief get RPM value from CASTLE_RAW_DATA */
+#define CLL_GET_BEC_VOLTAGE(D, O) ( CLL_CALC_BEC_VOLTAGE(CLL_BASE_VALUE(D, FRAME_BEC_VOLTAGE, O)) ) /**< \brief get BEC voltage value from CASTLE_RAW_DATA */
+#define CLL_GET_BEC_CURRENT(D, O) ( CLL_CALC_BEC_CURRENT(CLL_BASE_VALUE(D, FRAME_BEC_CURRENT, O)) ) /**< \brief get BEC current value from CASTLE_RAW_DATA */
+#define CLL_GET_TEMP(D, O) ( CLL_GET_WHICH_TEMP(D) == FRAME_TEMP1 ? CLL_CALC_TEMP1(CLL_BASE_VALUE(D, FRAME_VOLTAGE, O)) : CLL_CALC_TEMP2(CLL_BASE_VALUE(D, FRAME_VOLTAGE, O)) ) /**< \brief get temperature value from CASTLE_RAW_DATA */
+/**@}*/
+
+
 /** \brief This value can be used as "throttlePinNumber" argument to begin function
     to indicate that library itself has to generate throttle signal
     
@@ -160,17 +188,17 @@
 #define GENERATE_THROTTLE     -1
 
 /** \brief Structure for ESC telemetry data time measurements.
-    
+
     This structures stores time measurements representing
     telemetry data, as provided by the ESC. Complete human readable
     data is derived by calculations based on this.
-    
+
     See CastleLinkLiveLib::getData(uint8_t index,CASTLE_ESC_DATA *dataHolder) for calculation details.
-    
-    @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_RAW_DATA *dataHolder) 
+
+    @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_RAW_DATA *dataHolder)
 */
 typedef struct castle_raw_data_struct {
-  
+
    /** \brief Array containing time (timer ticks) measurements for all ESC data frames
    */
    uint16_t ticks[DATA_FRAME_CNT];
@@ -181,32 +209,32 @@ typedef struct castle_raw_data_struct {
     This structure holds ESC telemetry data as provided by the ESC itself. It's obtained from
     time-measurement data contained in CASTLE_RAW_DATA structure by calculations executed when the
     program calls uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_ESC_DATA *dataHolder)
-    @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_ESC_DATA *dataHolder) 
+    @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_ESC_DATA *dataHolder)
 */
 typedef struct castle_esc_data_struct {
   float voltage;         /**< \brief Battery voltage in Volts */
   float rippleVoltage;   /**< \brief Ripple voltage in Volts */
   float current;         /**< \brief Current drawn by motor in Amperes */
   float throttle;        /**< \brief throttle pulse duration as seen by the ESC (in milliseconds) */
-  float outputPower;     /**< \brief power level the ESC is driving the motor with. 
+  float outputPower;     /**< \brief power level the ESC is driving the motor with.
                               Value goes from 0.0 for idle to 1.0 for full throttle. */
-  float RPM;             /**< \brief Round per minutes the motor is spinning at. This values 
+  float RPM;             /**< \brief Round per minutes the motor is spinning at. This values
   represents ELECTRICAL rpm, that are not shaft/prop rpm.
-  
+
   You can calculate shaft rpm with following formula:
                               \f[ sRPM = eRPM / MP * 2 \f]
-      
-  where: 
-  
+
+  where:
+
   \f$ sRPM \f$ is shaft rpm,
-  
+
   \f$ eRPM \f$ is electrical rpm,
-  
-  and \f$ MP \f$ is the number of magnetic poles in the motor. */  
+
+  and \f$ MP \f$ is the number of magnetic poles in the motor. */
   float BECvoltage;      /**< \brief Voltage at the BEC (Battery Eliminator Circuit) in Volts */
   float BECcurrent;      /**< \brief Current drawn by servos and any other device powered by the BEC in Amperes */
   float temperature;     /**< \brief Temperature of the ESC in degree Celsius */
-  
+
 } CASTLE_ESC_DATA;
 
 /** \brief CastleLinkLive4Arduino Library Class

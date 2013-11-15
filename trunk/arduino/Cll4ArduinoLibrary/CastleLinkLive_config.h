@@ -52,14 +52,6 @@
  */
 #define LED_DISABLE 0
 
-/**
-    By default, CastleLinkLive will be enabled to control to up to 2 ESCs
-    if compiled for ATmega168, ATmega328, ATmega1280 or ATmega2560; or 
-    up to 1 if compiled for ATmega8.
-    Here you can override it.
-    Anyway keep in mind that code will not manage more than 2 ESCs
- */
-#define MAX_ESCS 2
 
 /**
     By default, when generating throttle, CastleLinkLive will keep
