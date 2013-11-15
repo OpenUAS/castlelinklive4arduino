@@ -142,10 +142,10 @@
 	Utility macros to calc telemetry values from CASTLE_RAW_DATA on your own
  */
 /**@{*/
-#define CLL_GET_REFERENCE(D) ( D[FRAME_REFERENCE] ) /**< \brief get reference from CASTLE_RAW_DATA D */
-#define CLL_GET_OFFSET(D) ( min(D[FRAME_TEMP1], D[FRAME_TEMP2]) ) /**< \brief get offset from CASTLE_RAW_DATA D */
-#define CLL_GET_WHICH_TEMP(D) ( D[FRAME_TEMP1] < D[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 ) /**< \brief get which temp from CASTLE_RAW_DATA D */
-#define CLL_BASE_VALUE(D, I, O) ( (D[I] - O) / ((float) CLL_GET_REFERENCE(D) ) ) /**< \brief get base value from CASTLE_RAW_DATA
+#define CLL_GET_REFERENCE(D) ( D.ticks[FRAME_REFERENCE] ) /**< \brief get reference from CASTLE_RAW_DATA D */
+#define CLL_GET_OFFSET(D) ( min(D.ticks[FRAME_TEMP1], D.ticks[FRAME_TEMP2]) ) /**< \brief get offset from CASTLE_RAW_DATA D */
+#define CLL_GET_WHICH_TEMP(D) ( D.ticks[FRAME_TEMP1] < D.ticks[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 ) /**< \brief get which temp from CASTLE_RAW_DATA D */
+#define CLL_BASE_VALUE(D, I, O) ( (D.ticks[I] - O) / ((float) CLL_GET_REFERENCE(D) ) ) /**< \brief get base value from CASTLE_RAW_DATA
 
 																						Base value calculation common to all values
 																						D is CASTLE_RAW_DATA
