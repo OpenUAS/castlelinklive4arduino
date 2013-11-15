@@ -514,14 +514,14 @@ uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_ESC_DATA *o) {
     whichTemp = FRAME_TEMP1;
   }*/
 
-  offTicks = CLL_GET_OFFSET(c.ticks);
-  whichTemp = CLL_GET_WHICH_TEMP(c.ticks);
+  offTicks = CLL_GET_OFFSET(c);
+  whichTemp = CLL_GET_WHICH_TEMP(c);
 
   if (c.ticks[FRAME_REFERENCE] == 0) return false; //data was not ready
   
   for (int f = 1; f < DATA_FRAME_CNT; f++) {
     //value = ((float) (c.ticks[f] - offTicks)) / ((float) refTicks);
-    value = CLL_BASE_VALUE(c.ticks, f, offTicks);
+    value = CLL_BASE_VALUE(c, f, offTicks);
 
     switch(f) {
       case FRAME_VOLTAGE:
