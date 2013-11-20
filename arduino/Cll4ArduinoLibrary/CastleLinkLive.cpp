@@ -151,6 +151,7 @@ CASTLE_PRIV_DATA data[MAX_ESCS];
 volatile uint8_t flags = 0; 
 
 uint8_t throttleFailCnt = 0;
+uint8_t gInstalledEsc = 0;
 
 #if (LED_DISABLE == 0)
 uint8_t ledCnt = 0;
@@ -174,6 +175,8 @@ uint16_t _throttleMaxTicks;
 uint16_t _throttleIntervalTicks;
 
 void (*throttlePresenceHandler) (uint8_t) = NULL;
+void (*dataAvailableHandler) (uint8_t escIndex, CASTLE_RAW_DATA *data) = NULL;
+
 
 /* 
  * CastleLinkLiveLib class
@@ -189,7 +192,7 @@ CastleLinkLiveLib::CastleLinkLiveLib() {
 void CastleLinkLiveLib::init() {
   _timer_init();
   _throttlePinNumber = GENERATE_THROTTLE;
-  _nESC = 0;
+  //_nESC = 0;
   
   LED_INIT();
   LED_OFF();    
@@ -303,13 +306,14 @@ uint8_t CastleLinkLiveLib::_setThrottlePinRegisters() {
   return true;
 }
 
-uint8_t CastleLinkLiveLib::_copyDataStructure(uint8_t index, CASTLE_RAW_DATA *dest ) {
+uint8_t CastleLinkLiveLib::_copyDataStructure(uint8_t index, CASTLE_RAW_DATA *dest) {
+  
   const uint8_t mask = _BV(index);
   flags |= mask; //set busy flag for desired ESC
-  
+
   unsigned long startWait = millis();
   while (flags & mask) { //wait for ISRs code to finish filling data structure
-    if (millis() - startWait >= WAITFORDATA_TIMEOUT) return false;
+	if (millis() - startWait >= WAITFORDATA_TIMEOUT) return false;
   }
   memcpy(dest, &(data[index]), sizeof(uint16_t) * DATA_FRAME_CNT); 
   
@@ -332,8 +336,10 @@ void CastleLinkLiveLib::setLed(uint8_t on) {
  
 uint8_t CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber, uint16_t throttleMin, uint16_t throttleMax) {
   if ( (nESC > MAX_ESCS) || (nESC <= 0) ) return false;
-  _nESC = nESC;
+  //_nESC = nESC;
   
+  gInstalledEsc = nESC;
+
   _throttlePinNumber = throttlePinNumber;
   
   if (_throttlePinNumber > GENERATE_THROTTLE) {
@@ -374,7 +380,7 @@ uint8_t CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber, uint16_t t
   TIMER_ENABLE_COMPA();
 
   //init data structures
-  for (int i = 0; i < _nESC; i++) _init_data_structure(i);
+  for (int i = 0; i < nESC; i++) _init_data_structure(i);
 
   if (_throttlePinNumber == GENERATE_THROTTLE) { // if auto-generating throttle...
     // set output compare match B with number of ticks
@@ -455,6 +461,10 @@ void CastleLinkLiveLib::attachThrottlePresenceHandler(void (*ptHandler) (uint8_t
   throttlePresenceHandler = ptHandler; 
 }
 
+void CastleLinkLiveLib::attachDataAvailableHandler( void (*ptHandler) (uint8_t escIndex, CASTLE_RAW_DATA *data) ) {
+	dataAvailableHandler = ptHandler;
+}
+
 void CastleLinkLiveLib::setThrottle(uint8_t throttle) {
   if (_throttlePinNumber > GENERATE_THROTTLE) return;
   
@@ -514,14 +524,14 @@ uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_ESC_DATA *o) {
     whichTemp = FRAME_TEMP1;
   }*/
 
-  offTicks = CLL_GET_OFFSET(c);
+  offTicks = CLL_GET_OFFSET_TICKS(c);
   whichTemp = CLL_GET_WHICH_TEMP(c);
 
   if (c.ticks[FRAME_REFERENCE] == 0) return false; //data was not ready
   
   for (int f = 1; f < DATA_FRAME_CNT; f++) {
     //value = ((float) (c.ticks[f] - offTicks)) / ((float) refTicks);
-    value = CLL_BASE_VALUE(c, f, offTicks);
+    value = CLL_BASE_VALUE(c.ticks[f], c.ticks[FRAME_REFERENCE], offTicks);
 
     switch(f) {
       case FRAME_VOLTAGE:
@@ -581,16 +591,15 @@ uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_ESC_DATA *o) {
 }
 //! [ESC data calculation details]
 
-
 uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_RAW_DATA *o) {
-  return _copyDataStructure(index, o); 
+  return _copyDataStructure(index, o);
 }
 
 /*
  * Interrupt Service Routines and related functions
  ****************************************************/
 
-//=== INT0/INT1 (external interrupts) handlers: get data from ESC(s)
+//=== INT0/INT1/INT... (external interrupts) handlers: get data from ESC(s)
 inline void escInterruptHandler(uint8_t index) {
   uint16_t ticks = TIMER_CNT;
 
@@ -635,7 +644,6 @@ ISR(ESC4_ISR) {
   escInterruptHandler(4);
 }
 #endif
-
 
 //=== PinChange interrupt handlers: get throttle signal
 inline void throttleInterruptHandler(uint8_t pinStatus) {
@@ -716,7 +724,7 @@ ISR(PCINT2_vect) {
 }
 #endif
 
-//=== TIMER1 interrupts handlers
+//=== TIMER interrupts handlers
 
 // castle data timeout
 ISR(TIMER_COMPA_ISR) {
@@ -727,17 +735,20 @@ ISR(TIMER_COMPA_ISR) {
 #endif
   ESC_DDR |= escPinsHighMask;  //set castle pind to output
 
-  for (int i = 0; i < MAX_ESCS; i++) {     
+  for (int i = 0; i < gInstalledEsc; i++) {
+	CASTLE_PRIV_DATA *d = &(data[i]);
+
     //if castle ESC ticked some data in, reset the ticked indicator for next cycle
     //otherwise, it was a reset frame
-    if (data[i].ticked)
-      data[i].ticked = false;
-    else 
-      data[i].frameIdx = FRAME_RESET;
+    if (d->ticked)
+      d->ticked = false;
+    else
+      d->frameIdx = FRAME_RESET;
 
-    if (data[i].frameIdx == FRAME_RESET && data[i].ready) {
+    if (d->frameIdx == FRAME_RESET && d->ready) {
       flags &= ~ _BV(i); //data for this ESC is ready: clear busy flag
-      data[i].ready = false;
+      d->ready = false;
+      if (dataAvailableHandler) dataAvailableHandler(i, (CASTLE_RAW_DATA *) d);
     }
   }
 
@@ -751,6 +762,8 @@ ISR(TIMER_COMPA_ISR) {
       LED_OFF();
   }
 #endif
+
+
   
 }
 
@@ -759,7 +772,7 @@ ISR(TIMER_COMPB_ISR) {
   ESC_TOGGLE_PORT |= escPinsHighMask; //toggle esc pins
   TIMER_CLEAR(); //clear timer
   
-  if ( ! (ESC_WRITE_PORT & _BV(PORTD2)) ) {
+  if ( ! (ESC_WRITE_PORT & /*_BV(PORTD2)*/ escPinsHighMask) ) { //TODO check
     TIMER_SET_COMPB(throttlePulseHighTicks); //set COMPB to generate throttle pulse throttleTicks-long
 
 #if (LED_DISABLE == 0)
