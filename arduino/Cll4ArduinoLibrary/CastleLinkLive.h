@@ -569,6 +569,12 @@ class CastleLinkLiveLib {
        @see throttleArm
    */
    void setLed(uint8_t on);
+
+   /** \brief Converts electrical RPM in shaft RPM based on motor poles number
+
+   	   @see CASTLE_ESC_DATA
+   */
+   uint16_t getShaftRPM(uint16_t eRPM, uint8_t motorPoles);
 #endif
 
   private:

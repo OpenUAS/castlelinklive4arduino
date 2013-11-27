@@ -548,6 +548,11 @@ uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_RAW_DATA *o) {
   return _copyDataStructure(index, o);
 }
 
+uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles) {
+  return (eRPM * 2 / ((float) motorPoles));
+}
+
+
 /*
  * Interrupt Service Routines and related functions
  ****************************************************/
