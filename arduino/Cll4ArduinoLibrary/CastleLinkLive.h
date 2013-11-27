@@ -111,14 +111,8 @@
     These macros are used as identifiers for the various data frames.
 */
 /**@{*/
-#define FRAME_RESET            -1  /**< \brief frame identifier for the reset frame. 
-
-                                         This special frame contains no data, and is used to signal
-                                         the start of a data sequence */
-#define FRAME_REFERENCE        0   /**< \brief frame identifier for reference-time frame 
-                                         
-                                         This special frame is used as a reference for calibrating
-                                         times: it contains the 1-unit time as provided by the ESC */
+#define FRAME_RESET            -1  /**< \brief frame identifier for the reset frame: contains no data and signals the start of a data sequence */
+#define FRAME_REFERENCE        0   /**< \brief frame identifier for reference-time frame: used for calibrating times */
 #define FRAME_VOLTAGE          1   /**< \brief frame identifier for voltage frame */
 #define FRAME_RIPPLE_VOLTAGE   2   /**< \brief frame identifier for ripple frame */
 #define FRAME_CURRENT          3   /**< \brief frame identifier for current frame */
@@ -134,58 +128,194 @@
 /**@}*/
 
 //private CLL data calculation macros
-#define __CLL_TEMP2_PRELIMINAR_(V) ( V * 63.8125f )
-#define __CLL_TEMP2_FINAL_(V) ( 1.0f / (log(V * 10200.0f / (255 - V) / 10000.0f) / 3455.0f + 1.0f / 298.0f) - 273 )
+#define __CLL_TEMP2_PRELIMINAR_(V) ( (V) * 63.8125f )
+#define __CLL_TEMP2_FINAL_(V) ( 1.0f / (log((V) * 10200.0f / (255 - (V)) / 10000.0f) / 3455.0f + 1.0f / 298.0f) - 273 )
 
 /** \name CastleLinkLive Data Calculation Macros
 
-	Utility macros to calc telemetry values from CASTLE_RAW_DATA on your own
+	Utility macros to calc telemetry values from CASTLE_RAW_DATA on your own.
+
+	For any telemetry value, you have to calc the base value using
+	CLL_BASE_VALUE(T, R, O) and use it to feed CLL_CALC_*(V) macros and
+	obtain the final value.
+
+	CLL_BASE_VALUE(T, R, O) needs three parameters:
+	 - T is ticks count for the desired telemetry value. You can get it with CLL_GET_*_TICKS(D) macros.
+	 - R is reference ticks count. You can get it with CLL_GET_REFERENCE_TICKS(D) macro.
+	 - O is offset ticks count. You can get it with CLL_GET_OFFSET_TICKS(D) macro.
+
+	 For example, to get RIPPLE VOLTAGE telemetry value, do the following:
+
+	 \code
+	 CASTLE_RAW_DATA data;
+
+	 CastleLinkLive.getData(&data);
+
+	 uint16_t ref = CLL_GET_REFERENCE_TICKS(data);
+	 uint16_t off = CLL_GET_OFFSET_TICKS(data);
+	 uint16_t ticks = CLL_GET_RIPPLE_VOLTAGE_TICKS(data);
+
+	 float ripple_voltage = CLL_CALC_RIPPLE_VOLTAGE( CLL_BASE_VALUE(ticks, ref, off) );
+	 \endcode
+
+     Or combined to save some variables memory:
+
+	 \code
+	 CASTLE_RAW_DATA data;
+
+	 CastleLinkLive.getData(&data);
+
+	 float ripple_voltage =
+	 	 CLL_CALC_RIPPLE_VOLTAGE(
+	 	 	 CLL_BASE_VALUE(
+	 	 	 	 CLL_GET_RIPPLE_VOLTAGE_TICKS(data),
+	 	 	 	 CLL_GET_REFERENCE_TICKS(data),
+	 	 	 	 CLL_GET_OFFSET_TICKS(data)
+	 	 	 )
+	 	 );
+	 \endcode
+
+
+	 Alternatively, you can use the CLL_GET_*(D, O) macros to save some code-writing:
+
+	 \code
+	 CASTLE_RAW_DATA data;
+
+	 CastleLinkLive.getData(&data);
+
+	 float ripple_voltage = CLL_GET_RIPPLE_VOLTAGE( data, CLL_GET_OFFSET_TICKS(data) );
+	 \endcode
+
+	 _PERFORMANCE NOTE_
+
+	 Remember that CLL_GET_OFFSET_TICKS(D) executes a conditional evaluation, so it's
+	 probably better to get and cache it in a variable if you're going to get more than
+	 one telemetry value at once.
+
+	 \code
+	 CastleLinkLive.getData(&data);
+
+	 uint16_t off = CLL_GET_OFFSET_TICKS(data);
+
+	 float voltage = CLL_GET_VOLTAGE( data, off );
+	 float current = CLL_GET_CURRENT( data, off );
+	 float ripple_voltage = CLL_GET_RIPPLE_VOLTAGE( data, off );
+	 \endcode
+
+
  */
 /**@{*/
 
-#define CLL_GET_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_VOLTAGE] ) /**< \brief get voltage ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_RIPPLE_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_RIPPLE_VOLTAGE] ) /**< \brief get ripple voltage ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_CURRENT_TICKS(D) ( (D).ticks[FRAME_CURRENT] ) /**< \brief get current ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_THROTTLE_TICKS(D) ( (D).ticks[FRAME_THROTTLE] ) /**< \brief get throttle ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_OUTPUT_POWER_TICKS(D) ( (D).ticks[FRAME_OUTPUT_POWER] ) /**< \brief get output power ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_RPM_TICKS(D) ( (D).ticks[FRAME_RPM] ) /**< \brief get RPM ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_BEC_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_BEC_VOLTAGE] ) /**< \brief get BEC voltage ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_BEC_CURRENT_TICKS(D) ( (D).ticks[FRAME_BEC_CURRENT] ) /**< \brief get BEC current ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_TEMP1_TICKS(D) ( (D).ticks[FRAME_TEMP1] ) /**< \brief get temperature ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_TEMP2_TICKS(D) ( (D).ticks[FRAME_TEMP2] ) /**< \brief get temperature ticks count from CASTLE_RAW_DATA */
-#define CLL_GET_TEMP_TICKS(D) ( CLL_GET_WHICH_TEMP(D) == FRAME_TEMP1 ? (D).ticks[FRAME_TEMP1]  : (D).ticks[FRAME_TEMP2] ) /**< \brief get temperature ticks count from CASTLE_RAW_DATA */
+/** \brief Indicates which temperature value is active
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @return FRAME_TEMP1 or FRAME_TEMP2
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_WHICH_TEMP(D) ( (D).ticks[FRAME_TEMP1] < (D).ticks[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 )
 
+/** \brief Gets voltage ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_VOLTAGE] )
 
-#define CLL_GET_REFERENCE_TICKS(D) ( (D).ticks[FRAME_REFERENCE] ) /**< \brief get reference from CASTLE_RAW_DATA D */
-#define CLL_GET_OFFSET_TICKS(D) ( min((D).ticks[FRAME_TEMP1], (D).ticks[FRAME_TEMP2]) ) /**< \brief get offset from CASTLE_RAW_DATA D */
-#define CLL_GET_WHICH_TEMP(D) ( (D).ticks[FRAME_TEMP1] < (D).ticks[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 ) /**< \brief get which temp from CASTLE_RAW_DATA D */
-/*#define CLL_BASE_VALUE(D, I, O) ( (D.ticks[I] - O) / ((float) CLL_GET_REFERENCE(D) ) ) /**< \brief get base value from CASTLE_RAW_DATA
+/** \brief Gets ripple voltage ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_RIPPLE_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_RIPPLE_VOLTAGE] )
 
-																						Base value calculation common to all values
-																						D is CASTLE_RAW_DATA
-																						I is frame identifier for desired value
-																						O is offset (as obtained from CLL_GET_OFFSET(D) )
- 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 */
+/** \brief Gets current ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_CURRENT_TICKS(D) ( (D).ticks[FRAME_CURRENT] )
 
-#define CLL_BASE_VALUE(T, R, O) ( (T - O) / ((float) R ) ) /**< \brief get base value from ticks, reference, offset
+/** \brief Gets throttle ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_THROTTLE_TICKS(D) ( (D).ticks[FRAME_THROTTLE] )
 
-																						Base value calculation common to all values
-																						D is ticks count for value
-																						R reference ticks count (as obtained from CLL_GET_REFERENCE(D) )
-																						O is offset ticks (as obtained from CLL_GET_OFFSET(D) )
- 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 	 */
+/** \brief Gets output power ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_OUTPUT_POWER_TICKS(D) ( (D).ticks[FRAME_OUTPUT_POWER] )
 
+/** \brief Gets RPM ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_RPM_TICKS(D) ( (D).ticks[FRAME_RPM] )
 
-#define CLL_CALC_VOLTAGE(V) ( V * 20.0f )	/**< \brief calc final voltage value from base value */
-#define CLL_CALC_RIPPLE_VOLTAGE(V) ( V * 4.0f ) /**< \brief calc final ripple voltage value from base value */
-#define CLL_CALC_CURRENT(V) ( V * 50.0f ) /**< \brief calc final current value from base value */
-#define CLL_CALC_THROTTLE(V) ( V ) /**< \brief calc final throttle value from base value */
-#define CLL_CALC_OUTPUT_POWER(V) ( V * 0.2502f ) /**< \brief calc final output power value from base value */
-#define CLL_CALC_RPM(V) ( V * 20416.7f ) /**< \brief calc final rpm value from base value */
-#define CLL_CALC_BEC_VOLTAGE(V) ( V * 4.0f ) /**< \brief calc final BEC voltage value from base value */
-#define CLL_CALC_BEC_CURRENT(V) ( V * 4.0f ) /**< \brief calc final BEC current value from base value */
-#define CLL_CALC_TEMP1(V) ( V * 30.0f ) /**< \brief calc final temperature 1 value from base value */
-#define CLL_CALC_TEMP2(V) ( V > 3.9f ? -40 : __CLL_TEMP2_FINAL_(__CLL_TEMP2_PRELIMINAR_(V)) ) /**< \brief calc final temperature 2 value from base value */
+/** \brief Gets BEC voltage ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_BEC_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_BEC_VOLTAGE] )
+
+/** \brief Gets BEC current ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_BEC_CURRENT_TICKS(D) ( (D).ticks[FRAME_BEC_CURRENT] )
+
+/** \brief Gets temperature 1 ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_TEMP1_TICKS(D) ( (D).ticks[FRAME_TEMP1] )
+
+/** \brief Gets temperature 2 ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_TEMP2_TICKS(D) ( (D).ticks[FRAME_TEMP2] )
+
+/** \brief Gets active temperature (1 or 2) ticks count from CASTLE_RAW_DATA
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_TEMP_TICKS(D) ( CLL_GET_WHICH_TEMP(D) == FRAME_TEMP1 ? (D).ticks[FRAME_TEMP1]  : (D).ticks[FRAME_TEMP2] )
+
+/** \brief Gets reference from CASTLE_RAW_DATA D
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_REFERENCE_TICKS(D) ( (D).ticks[FRAME_REFERENCE] )
+
+/** \brief Gets offset from CASTLE_RAW_DATA D
+ 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
+ */
+#define CLL_GET_OFFSET_TICKS(D) ( min((D).ticks[FRAME_TEMP1], (D).ticks[FRAME_TEMP2]) )
+
+/** \brief Calculates base value from ticks, reference, offset
+
+	Base value calculation common to all values:
+	needed to scale the reading using reference and offset
+	calibration values.
+
+	@param T [in] ticks count for value
+	@param R [in] reference ticks count (as obtained from CLL_GET_REFERENCE(D) )
+	@param O [in] is offset ticks (as obtained from CLL_GET_OFFSET(D) )
+
+  */
+#define CLL_BASE_VALUE(T, R, O) ( (T - O) / ((float) R ) )
+
+#define CLL_CALC_VOLTAGE(V) ( (V) * 20.0f )	/**< \brief Calculates final voltage value from base value */
+#define CLL_CALC_RIPPLE_VOLTAGE(V) ( (V) * 4.0f ) /**< \brief Calculates final ripple voltage value from base value */
+#define CLL_CALC_CURRENT(V) ( (V) * 50.0f ) /**< \brief Calculates final current value from base value */
+#define CLL_CALC_THROTTLE(V) ( (V) ) /**< \brief Calculates final throttle value from base value */
+#define CLL_CALC_OUTPUT_POWER(V) ( (V) * 0.2502f ) /**< \brief Calculates final output power value from base value */
+#define CLL_CALC_RPM(V) ( (V) * 20416.7f ) /**< \brief Calculates final rpm value from base value */
+#define CLL_CALC_BEC_VOLTAGE(V) ( (V) * 4.0f ) /**< \brief Calculates final BEC voltage value from base value */
+#define CLL_CALC_BEC_CURRENT(V) ( (V) * 4.0f ) /**< \brief Calculates final BEC current value from base value */
+#define CLL_CALC_TEMP1(V) ( (V) * 30.0f ) /**< \brief Calculates final temperature 1 value from base value */
+
+/** \brief Calculates final temperature 2 value from base value */
+#define CLL_CALC_TEMP2(V) ( (V) > 3.9f ? -40 : __CLL_TEMP2_FINAL_(__CLL_TEMP2_PRELIMINAR_(V)) )
 
 
 #define CLL_GET_VOLTAGE(D, O) ( CLL_CALC_VOLTAGE(CLL_BASE_VALUE( CLL_GET_VOLTAGE_TICKS(D), CLL_GET_REFERENCE_TICKS(D), O)) ) /**< \brief get voltage value from CASTLE_RAW_DATA */
@@ -203,7 +333,7 @@
 /** \brief This value can be used as "throttlePinNumber" argument to begin function
     to indicate that library itself has to generate throttle signal
     
-    This is also the default value if you call begin without provinding 
+    This is also the default value if you call begin without providing
     the second parameter.
     @see CastleLinkLiveLib::begin(uint8_t nESC)
     @see CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber)
@@ -266,17 +396,17 @@ typedef struct castle_esc_data_struct {
     Castle Creations ESCs with CastleLinkLive protocol
     available and enabled (version 2.0).
     
-    \warning SAFETY NOTICE
-    Always keep in mind that an electric motor can be dangerous 
-    for you, for people and for things. It can start at any time if there is power. 
+    \warning **SAFETY NOTICE**<br />
+    *Always keep in mind* that an electric motor can be dangerous
+    for you, for people and for things. It can start _at any time_ if there is power.
     Castle Creations ESC are very good ones, and have many security
-    strategies to avoid accidental and unwanted motor start.
+    strategies to avoid accidental and unwanted motor start.<br />
     CastleLinkLive library also try to keep things as safe as
     possible, but using them together with an Arduino (or similar) board 
     connected to an electric power system adds another possible point of 
-    failure to your motor control chain.
-    So please stay always on the safe side. If you have any doubts, ask
-    other modelers to help.
+    failure to your motor control chain.<br />
+    So please **stay always on the safe side**. If you have any doubts, ask
+    other modelers to help.<br />
     It's your responsibility to keep things safe. Developers of this software
     can't be considered liable for any possible damage will result from its use.
     
