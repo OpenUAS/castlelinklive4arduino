@@ -72,16 +72,6 @@
  ***************************************/
 #define TIMER_RESOLUTION 0xFFFFu
 
-
-//ATmega 168 / 328 settings
-/*#if defined (__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
-#include "atmega168_328.h"
-//ATmega32U4 settings
-#elif defined (__AVR_ATmega32U4__)
-#include "atmega32U4.h"
-#endif
-*/
-
 #define TIMER_FREQ (F_CPU / TIMER_PRESCALER)
 #define TIME2TICKS(T) ( T * TIMER_FREQ )
 
@@ -101,10 +91,6 @@
 #define TG_INTERVAL ( TG_MAX - TG_MIN )
 
 #define TG_PERIOD_TICKS (THROTTLEGEN_PERIOD * TIMER_FREQ) //20ms period
-//#define TG_MIN_TICKS ( TG_MIN * TIMER1_FREQ )
-//#define TG_MAX_TICKS ( TG_MAX * TIMER1_FREQ )
-//#define TG_INTERVAL_TICKS ( TG_INTERVAL * TIMER1_FREQ )
-
 
 #define CASTLE_RESET_TIMEOUT 0.006f //6 ms: castle tick has to come before
 #define TIMER_RESET_TICKS (CASTLE_RESET_TIMEOUT * TIMER_FREQ)
@@ -162,13 +148,13 @@ uint8_t throttlePinMask;
 uint16_t throttlePulseHighTicks;
 uint16_t throttlePulseLowTicks;
 
-uint8_t esc1PinMask; // = _BV(PIND2);
-uint8_t escPinsHighMask; // = _BV(PORTD2) | _BV(PORTD3);
-uint8_t escPinsLowMask; // = ~ escPinsHighMask;
+uint8_t esc1PinMask;
+uint8_t escPinsHighMask;
+uint8_t escPinsLowMask;
 
-uint8_t extIntClearMask; // = _BV(INTF0) | _BV(INTF1);
-uint8_t extIntEnableMask; // = _BV(INT0) | _BV(INT1);
-uint8_t extIntDisableMask; // = ~ extIntEnableMask;
+uint8_t extIntClearMask;
+uint8_t extIntEnableMask;
+uint8_t extIntDisableMask;
 
 uint16_t _throttleMinTicks;
 uint16_t _throttleMaxTicks;
@@ -336,7 +322,6 @@ void CastleLinkLiveLib::setLed(uint8_t on) {
  
 uint8_t CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber, uint16_t throttleMin, uint16_t throttleMax) {
   if ( (nESC > MAX_ESCS) || (nESC <= 0) ) return false;
-  //_nESC = nESC;
   
   gInstalledEsc = nESC;
 
@@ -354,20 +339,14 @@ uint8_t CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber, uint16_t t
   
   _timer_init();
 
-  /*if (nESC == 2) {
-    EICRA = _BV(ISC01) | _BV(ISC11); // configure falling edge detection on INT0 and INT1
-  } else {
-    EICRA = _BV(ISC01); //configure falling edge detection on INT0*/
-   
-  	configEscINTs(nESC);
+  configEscINTs(nESC);
 
-    escPinsHighMask = getEscPinsMask(nESC); //_BV(PORTD2);
-    escPinsLowMask = ~ escPinsHighMask;
+  escPinsHighMask = getEscPinsMask(nESC);
+  escPinsLowMask = ~ escPinsHighMask;
 
-    extIntClearMask = getEscIntClearMask(nESC); //   _BV(INTF0);
-    extIntEnableMask = getEscIntEnableMask(nESC); // _BV(INT0);
-    extIntDisableMask = ~ extIntEnableMask;
-  //}
+  extIntClearMask = getEscIntClearMask(nESC);
+  extIntEnableMask = getEscIntEnableMask(nESC);
+  extIntDisableMask = ~ extIntEnableMask;
 
   ESC_DDR |= escPinsHighMask; //set ESCs pins as outputs
   ESC_WRITE_PORT |= escPinsHighMask; //set ESCs pins high
@@ -504,8 +483,6 @@ void CastleLinkLiveLib::setThrottle(uint8_t throttle) {
 
 //! [ESC data calculation details]
 uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_ESC_DATA *o) {
-  //uint16_t refTicks;
-  uint16_t offTicks;
   uint8_t whichTemp;
   float value;
 
@@ -515,71 +492,47 @@ uint8_t CastleLinkLiveLib::getData( uint8_t index, CASTLE_ESC_DATA *o) {
   
   if (! _copyDataStructure(index, &c)) return false; //data was not ready
   
-  //refTicks = c.ticks[FRAME_REFERENCE];
-  /*if (c.ticks[FRAME_TEMP1] < c.ticks[FRAME_TEMP2]) {
-    offTicks = c.ticks[FRAME_TEMP1];
-    whichTemp = FRAME_TEMP2;
-  } else {
-    offTicks = c.ticks[FRAME_TEMP2];    
-    whichTemp = FRAME_TEMP1;
-  }*/
-
-  offTicks = CLL_GET_OFFSET_TICKS(c);
   whichTemp = CLL_GET_WHICH_TEMP(c);
 
   if (c.ticks[FRAME_REFERENCE] == 0) return false; //data was not ready
   
   for (int f = 1; f < DATA_FRAME_CNT; f++) {
-    //value = ((float) (c.ticks[f] - offTicks)) / ((float) refTicks);
-    value = CLL_BASE_VALUE(c.ticks[f], c.ticks[FRAME_REFERENCE], offTicks);
+    value = CLL_BASE_VALUE(
+    		c.ticks[f],
+    		c.ticks[FRAME_REFERENCE],
+    		CLL_GET_OFFSET_TICKS(c)
+    );
 
     switch(f) {
       case FRAME_VOLTAGE:
-        //o->voltage = value * 20.0f;
         o->voltage = CLL_CALC_VOLTAGE(value);
         break;
       case FRAME_RIPPLE_VOLTAGE:
-        //o->rippleVoltage = value * 4.0f;
         o->rippleVoltage = CLL_CALC_RIPPLE_VOLTAGE(value);
         break;
       case FRAME_CURRENT:
-       // o->current = value * 50.0f;
         o->current = CLL_CALC_CURRENT(value);
         break;
       case FRAME_THROTTLE:
-        //o->throttle = value;
         o->throttle = CLL_CALC_THROTTLE(value);
         break;
       case FRAME_OUTPUT_POWER:
-        //o->outputPower = value * 0.2502f;
         o->outputPower = CLL_CALC_OUTPUT_POWER(value);
         break;
       case FRAME_RPM:
-        //o->RPM = value * 20416.7f;
         o->RPM = CLL_CALC_RPM(value);
         break;
       case FRAME_BEC_VOLTAGE:
-        //o->BECvoltage = value * 4.0f;
         o->BECvoltage = CLL_CALC_BEC_VOLTAGE(value);
         break;
       case FRAME_BEC_CURRENT:
-        //o->BECcurrent = value * 4.0f;
         o->BECcurrent = CLL_CALC_BEC_CURRENT(value);
         break;
       case FRAME_TEMP1:
-        //if (whichTemp == FRAME_TEMP1) o->temperature = value * 30.0f;
         if (whichTemp == FRAME_TEMP1) o->temperature = CLL_CALC_TEMP1(value);
         break;
       case FRAME_TEMP2:
         if (whichTemp == FRAME_TEMP2) {
-        /*
-           if (value > 3.9f)
-             o->temperature = -40;
-           else {
-             float v = value * 63.8125f;
-             o->temperature = 1.0f / (log(v * 10200.0f / (255 - v) / 10000.0f) / 3455.0f + 1.0f / 298.0f) - 273;
-           }
-         */
         	o->temperature = CLL_CALC_TEMP2(value);
         }
         break;
@@ -677,12 +630,12 @@ inline void throttleInterruptHandler(uint8_t pinStatus) {
        ledMod = 100 - ( t / ((float) (_throttleIntervalTicks)) * 100.0f) + 1;
 #endif
 
-     ESC_DDR &= escPinsLowMask; //set castle pins as inputs
+     ESC_DDR &= escPinsLowMask; //set esc pins as inputs
 #ifndef DISABLE_ALL_PULLUPS  
-     ESC_WRITE_PORT &= escPinsLowMask; //write LOW to castle pins to disable pullups if not globally disabled
+     ESC_WRITE_PORT &= escPinsLowMask; //write LOW to esc pins to disable pullups if not globally disabled
 #endif
-     EIFR |= extIntClearMask; // clear INT0 INT1 flags before enabling interrupts
-     EIMSK |= extIntEnableMask; //enable interrupts on INT0 and INT1
+     EIFR |= extIntClearMask; // clear INTn flags before enabling interrupts
+     EIMSK |= extIntEnableMask; //enable interrupts on INTn
   }
   
   throttleFailCnt = 0; //reset throttle failure counter  
@@ -728,12 +681,12 @@ ISR(PCINT2_vect) {
 
 // castle data timeout
 ISR(TIMER_COMPA_ISR) {
-  EIMSK &= extIntDisableMask; //disable INT0/INT1 interrupt
+  EIMSK &= extIntDisableMask; //disable INTn interrupt
   // timeout elapsed, so restore output mode for ESC pins in any case
 #ifndef DISABLE_ALL_PULLUPS  
-  ESC_WRITE_PORT |= escPinsHighMask; //write high to castle pind before switching to output if pullups are not globally disabled
+  ESC_WRITE_PORT |= escPinsHighMask; //write high to esc pins before switching to output if pullups are not globally disabled
 #endif
-  ESC_DDR |= escPinsHighMask;  //set castle pind to output
+  ESC_DDR |= escPinsHighMask;  //set esc pins to output
 
   for (int i = 0; i < gInstalledEsc; i++) {
 	CASTLE_PRIV_DATA *d = &(data[i]);
@@ -772,7 +725,7 @@ ISR(TIMER_COMPB_ISR) {
   ESC_TOGGLE_PORT |= escPinsHighMask; //toggle esc pins
   TIMER_CLEAR(); //clear timer
   
-  if ( ! (ESC_WRITE_PORT & /*_BV(PORTD2)*/ escPinsHighMask) ) { //TODO check
+  if ( ! (ESC_WRITE_PORT & escPinsHighMask) ) { //throttle out is LOW
     TIMER_SET_COMPB(throttlePulseHighTicks); //set COMPB to generate throttle pulse throttleTicks-long
 
 #if (LED_DISABLE == 0)
@@ -783,24 +736,23 @@ ISR(TIMER_COMPB_ISR) {
     else
       LED_OFF();
 #endif
-  } else {
+  } else { //throttle out is HIGH
     TIMER_SET_COMPB(throttlePulseLowTicks);
  
-    ESC_DDR &= escPinsLowMask; //set castle pins as inputs
+    ESC_DDR &= escPinsLowMask; //set esc pins as inputs
 #ifndef DISABLE_ALL_PULLUPS  
-    ESC_WRITE_PORT &= escPinsLowMask; //write LOW to castle pins to disable pullups if not globally disabled
+    ESC_WRITE_PORT &= escPinsLowMask; //write LOW to esc pins to disable pullups if not globally disabled
 #endif
-    EIFR |= extIntClearMask; // clear INT0 INT1 flags before enabling
-    EIMSK |= extIntEnableMask; //enable interrupts on INT0 and INT1
+    EIFR |= extIntClearMask; // clear INTn flags before enabling
+    EIMSK |= extIntEnableMask; //enable interrupts on INTn
 
     throttleFailCnt++; //increase throttle failure counter: 
   }
   
-  
   if (throttleFailCnt >= MAX_NO_THROTTLE_GEN) {
     TIMER_DISABLE_COMPB(); //disable interrupt generation
-    ESC_WRITE_PORT |= escPinsHighMask; //pins high!
-    ESC_DDR |= escPinsHighMask; //pins as output!
+    ESC_WRITE_PORT |= escPinsHighMask; //esc pins high!
+    ESC_DDR |= escPinsHighMask; //esc pins as output!
     throttleNotPresent();
   }
 }
