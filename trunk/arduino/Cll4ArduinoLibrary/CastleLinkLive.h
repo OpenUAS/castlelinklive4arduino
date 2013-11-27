@@ -302,7 +302,7 @@
 	@param O [in] is offset ticks (as obtained from CLL_GET_OFFSET(D) )
 
   */
-#define CLL_BASE_VALUE(T, R, O) ( (T - O) / ((float) R ) )
+#define CLL_BASE_VALUE(T, R, O) ( ( (T) > (O) ? ((T) - (O)) : 0 ) / ((float) (R) ) )
 
 #define CLL_CALC_VOLTAGE(V) ( (V) * 20.0f )	/**< \brief Calculates final voltage value from base value */
 #define CLL_CALC_RIPPLE_VOLTAGE(V) ( (V) * 4.0f ) /**< \brief Calculates final ripple voltage value from base value */
@@ -346,9 +346,17 @@
     telemetry data, as provided by the ESC. Complete human readable
     data is derived by calculations based on this.
 
-    See CastleLinkLiveLib::getData(uint8_t index,CASTLE_ESC_DATA *dataHolder) for calculation details.
+	in [library header](@ref CastleLinkLive.h#CastleLinkLive Data Calculation Macros)
+
+    To get final readable values you can use CastleLinkLive Data Calculation Macros where
+    you'll find also the related math.
+
+    Alternatively, you can directly get final values by calling the method
+    CastleLinkLiveLib::getData(uint8_t index,CASTLE_ESC_DATA *dataHolder)
 
     @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_RAW_DATA *dataHolder)
+    @see uint8_t CastleLinkLiveLib::getData (uint8_t index, CASTLE_ESC_DATA *dataHolder)
+    @see CASTLE_ESC_DATA
 */
 typedef struct castle_raw_data_struct {
 
@@ -374,7 +382,10 @@ typedef struct castle_esc_data_struct {
   float RPM;             /**< \brief Round per minutes the motor is spinning at. This values
   represents ELECTRICAL rpm, that are not shaft/prop rpm.
 
-  You can calculate shaft rpm with following formula:
+  You can use utility function uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
+  to obtain shaft RPM from electrical RPM and number of motor magnetic poles.
+
+  Alternatively you can calculate shaft rpm with following formula:
                               \f[ sRPM = eRPM / MP * 2 \f]
 
   where:
@@ -383,7 +394,10 @@ typedef struct castle_esc_data_struct {
 
   \f$ eRPM \f$ is electrical rpm,
 
-  and \f$ MP \f$ is the number of magnetic poles in the motor. */
+  and \f$ MP \f$ is the number of magnetic poles in the motor.
+
+  @see uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
+  */
   float BECvoltage;      /**< \brief Voltage at the BEC (Battery Eliminator Circuit) in Volts */
   float BECcurrent;      /**< \brief Current drawn by servos and any other device powered by the BEC in Amperes */
   float temperature;     /**< \brief Temperature of the ESC in degree Celsius */
@@ -510,47 +524,52 @@ class CastleLinkLiveLib {
    
    /** \brief get throttle armed/disarmed state
     *
-    *  Returns true if throttle is armed on the library, false otherwise
+    *  @return true if throttle is armed on the library, false otherwise
     *  @see throttleArm
     */
    boolean isThrottleArmed();
 
-   /** \brief Attach a program-defined function to be called by the libray whenever it detects
+   /** \brief Attach a program-defined function to be called by the library whenever it detects
        throttle signal failure/recovery.
-       
-       @param[in] ptHandler is the program-defined function to attach. It has to be void and accept only one parameter, which specifies if
-       throttle is present and valid or not. Will be called by an ISR (interrupt service routine).
-       Sample prototype:       
-       \code 
+
+       Function prototype is:
+       \code
        void throttleEvent(boolean valid)
        \endcode
+       
+       The only boolean parameters reports if throttle is present and valid or not.
+
+	   Will be called by an ISR (interrupt service routine).
+
+       @param[in] ptHandler is the program-defined function to attach.
+
    */
    void attachThrottlePresenceHandler(void (*ptHandler) (uint8_t) );
    
 
-   /** \brief Attach a program-defined function to be called by the libray whenever the
-       library receives new telemetry value from ESC.
+   /** \brief Attach a program-defined function to be called by the library whenever the
+       it receives new telemetry data from ESC.
 
-	   @param[in] ptHandler is the program-defined function to attach. It has to be void and to
-	   accept three parameters
-       Will be called by an ISR (interrupt service routine).
-       Sample prototype:
+	   Function prototype is :
        \code
        void dataAvailable(uint8_t escIndex, uint8_t frameIndex, uint16_t ticks)
        \endcode
+
+       Will be called by an ISR (interrupt service routine).
+
+	   @param[in] ptHandler is the program-defined function to attach.
    */
    void attachDataAvailableHandler( void (*ptHandler) (uint8_t escIndex, CASTLE_RAW_DATA *data) ) ;
 
    /** \brief Gets human-readable parsed data for the index-ESC from the library. This data is
-       calculated by time-measurements contained in a CASTLE_RAW_DATA, as detailed in following
-       source code.
+       calculated by time-measurements contained in a CASTLE_RAW_DATA.
        
-       \snippet CastleLinkLive/CastleLinkLive.cpp ESC data calculation details
-
        @param [in] index indicates which ESC we want data for. First ESC index is 0
        @param [out] dataHolder is a pointer to a CASTLE_ESC_DATA structure to receive
        the data
        @return 0 if data is not available, or a positive number otherwise
+
+       @see CASTLE_RAW_DATA
    */
    uint8_t getData(uint8_t index, CASTLE_ESC_DATA *dataHolder);
    
@@ -560,6 +579,8 @@ class CastleLinkLiveLib {
        @param [out] dataHolder is a pointer to a CASTLE_RAW_DATA structure to receive
        the data
        @return 0 if data is not available, or a positive number otherwise
+
+       @see CASTLE_RAW_DATA
    */
    uint8_t getData(uint8_t index, CASTLE_RAW_DATA *dataHolder);
 
@@ -570,9 +591,14 @@ class CastleLinkLiveLib {
    */
    void setLed(uint8_t on);
 
-   /** \brief Converts electrical RPM in shaft RPM based on motor poles number
+   /** \brief Converts electrical RPM in shaft RPM from motor poles number
+
+	   @param eRPM [in] electrical RPM, from a CASTLE_ESC_DATA structure
+	   @param motorPoles [in] number of magnetic poles in the motor
+	   @return shaft RPM
 
    	   @see CASTLE_ESC_DATA
+   	   @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_ESC_DATA *data)
    */
    uint16_t getShaftRPM(uint16_t eRPM, uint8_t motorPoles);
 #endif
