@@ -101,8 +101,28 @@
 
 
 /** \cond */
-#define LIBRARY_VERSION 0.1.0
+#define LIBRARY_VERSION 0.1.1
 /** \endcond */
+
+/** \anchor constants */
+
+/** \name Constants */
+/**@{*/
+
+/** \brief This value can be used as "throttlePinNumber" argument to CastleLinkLiveLib::begin method
+    to indicate that library itself has to generate throttle signal
+
+    This is also the default throttlePinNumber value if you call begin version with one parameter
+    only.
+
+    @see CastleLinkLiveLib::begin(uint8_t nESC)
+    @see CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber)
+*/
+#define GENERATE_THROTTLE     -1
+
+/**@}*/
+
+/** \anchor cll_data_frames_ids */
 
 /** \name CastleLinkLive Data Frames Identifiers
 
@@ -127,9 +147,14 @@
 #define DATA_FRAME_CNT        11   /**< \brief number of data frames (not counting the reset frame) */
 /**@}*/
 
+
+/** \cond */
 //private CLL data calculation macros
 #define __CLL_TEMP2_PRELIMINAR_(V) ( (V) * 63.8125f )
 #define __CLL_TEMP2_FINAL_(V) ( 1.0f / (log((V) * 10200.0f / (255 - (V)) / 10000.0f) / 3455.0f + 1.0f / 298.0f) - 273 )
+/** \endcond */
+
+/** \anchor cll_data_calc_macros */
 
 /** \name CastleLinkLive Data Calculation Macros
 
@@ -188,9 +213,9 @@
 
 	 _PERFORMANCE NOTE_
 
-	 Remember that CLL_GET_OFFSET_TICKS(D) executes a conditional evaluation, so it's
-	 probably better to get and cache it in a variable if you're going to get more than
-	 one telemetry value at once.
+	 Remember that CLL_GET_OFFSET_TICKS(D) executes a conditional evaluation that's always
+	 valid inside a complete data pack, so it's probably better to get and cache it in a variable
+	 if you're going to get more than one telemetry value at once.
 
 	 \code
 	 CastleLinkLive.getData(&data);
@@ -200,6 +225,7 @@
 	 float voltage = CLL_GET_VOLTAGE( data, off );
 	 float current = CLL_GET_CURRENT( data, off );
 	 float ripple_voltage = CLL_GET_RIPPLE_VOLTAGE( data, off );
+	 ...
 	 \endcode
 
 
@@ -207,86 +233,86 @@
 /**@{*/
 
 /** \brief Indicates which temperature value is active
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @return FRAME_TEMP1 or FRAME_TEMP2
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_WHICH_TEMP(D) ( (D).ticks[FRAME_TEMP1] < (D).ticks[FRAME_TEMP2] ? FRAME_TEMP2 : FRAME_TEMP1 )
 
 /** \brief Gets voltage ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_VOLTAGE] )
 
 /** \brief Gets ripple voltage ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_RIPPLE_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_RIPPLE_VOLTAGE] )
 
 /** \brief Gets current ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_CURRENT_TICKS(D) ( (D).ticks[FRAME_CURRENT] )
 
 /** \brief Gets throttle ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_THROTTLE_TICKS(D) ( (D).ticks[FRAME_THROTTLE] )
 
 /** \brief Gets output power ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_OUTPUT_POWER_TICKS(D) ( (D).ticks[FRAME_OUTPUT_POWER] )
 
 /** \brief Gets RPM ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_RPM_TICKS(D) ( (D).ticks[FRAME_RPM] )
 
 /** \brief Gets BEC voltage ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_BEC_VOLTAGE_TICKS(D) ( (D).ticks[FRAME_BEC_VOLTAGE] )
 
 /** \brief Gets BEC current ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_BEC_CURRENT_TICKS(D) ( (D).ticks[FRAME_BEC_CURRENT] )
 
 /** \brief Gets temperature 1 ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_TEMP1_TICKS(D) ( (D).ticks[FRAME_TEMP1] )
 
 /** \brief Gets temperature 2 ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_TEMP2_TICKS(D) ( (D).ticks[FRAME_TEMP2] )
 
 /** \brief Gets active temperature (1 or 2) ticks count from CASTLE_RAW_DATA
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_TEMP_TICKS(D) ( CLL_GET_WHICH_TEMP(D) == FRAME_TEMP1 ? (D).ticks[FRAME_TEMP1]  : (D).ticks[FRAME_TEMP2] )
 
 /** \brief Gets reference from CASTLE_RAW_DATA D
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_REFERENCE_TICKS(D) ( (D).ticks[FRAME_REFERENCE] )
 
 /** \brief Gets offset from CASTLE_RAW_DATA D
- 	 @param D [in] data-filled CASTLE_RAW_DATA variable
+ 	 @param[in] D data-filled CASTLE_RAW_DATA variable
  	 @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_RAW_DATA *dataHolder)
  */
 #define CLL_GET_OFFSET_TICKS(D) ( min((D).ticks[FRAME_TEMP1], (D).ticks[FRAME_TEMP2]) )
@@ -297,9 +323,9 @@
 	needed to scale the reading using reference and offset
 	calibration values.
 
-	@param T [in] ticks count for value
-	@param R [in] reference ticks count (as obtained from CLL_GET_REFERENCE(D) )
-	@param O [in] is offset ticks (as obtained from CLL_GET_OFFSET(D) )
+	@param[in] T ticks count for value
+	@param[in] R reference ticks count (as obtained from CLL_GET_REFERENCE(D) )
+	@param[in] O is offset ticks (as obtained from CLL_GET_OFFSET(D) )
 
   */
 #define CLL_BASE_VALUE(T, R, O) ( ( (T) > (O) ? ((T) - (O)) : 0 ) / ((float) (R) ) )
@@ -330,26 +356,15 @@
 /**@}*/
 
 
-/** \brief This value can be used as "throttlePinNumber" argument to begin function
-    to indicate that library itself has to generate throttle signal
-    
-    This is also the default value if you call begin without providing
-    the second parameter.
-    @see CastleLinkLiveLib::begin(uint8_t nESC)
-    @see CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber)
-*/
-#define GENERATE_THROTTLE     -1
-
 /** \brief Structure for ESC telemetry data time measurements.
 
     This structures stores time measurements representing
     telemetry data, as provided by the ESC. Complete human readable
     data is derived by calculations based on this.
 
-	in [library header](@ref CastleLinkLive.h#CastleLinkLive Data Calculation Macros)
-
-    To get final readable values you can use CastleLinkLive Data Calculation Macros where
-    you'll find also the related math.
+    To get final readable values you can use
+    [CastleLinkLive Data Calculation Macros](@ref cll_data_calc_macros)
+    where you'll find also the related math.
 
     Alternatively, you can directly get final values by calling the method
     CastleLinkLiveLib::getData(uint8_t index,CASTLE_ESC_DATA *dataHolder)
@@ -360,8 +375,7 @@
 */
 typedef struct castle_raw_data_struct {
 
-   /** \brief Array containing time (timer ticks) measurements for all ESC data frames
-   */
+   /** \brief Array containing time (timer ticks) measurements for all ESC data frames */
    uint16_t ticks[DATA_FRAME_CNT];
 } CASTLE_RAW_DATA;
 
@@ -379,25 +393,27 @@ typedef struct castle_esc_data_struct {
   float throttle;        /**< \brief throttle pulse duration as seen by the ESC (in milliseconds) */
   float outputPower;     /**< \brief power level the ESC is driving the motor with.
                               Value goes from 0.0 for idle to 1.0 for full throttle. */
-  float RPM;             /**< \brief Round per minutes the motor is spinning at. This values
-  represents ELECTRICAL rpm, that are not shaft/prop rpm.
 
-  You can use utility function uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
-  to obtain shaft RPM from electrical RPM and number of motor magnetic poles.
+  /** \brief Round per minutes the motor is spinning at. This values
+    represents ELECTRICAL rpm, that are not shaft/prop rpm.
 
-  Alternatively you can calculate shaft rpm with following formula:
-                              \f[ sRPM = eRPM / MP * 2 \f]
+    You can use utility function uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
+    to obtain shaft RPM from electrical RPM and number of motor magnetic poles.
 
-  where:
+    Alternatively you can calculate shaft rpm with following formula:
+                                \f[ sRPM = eRPM / MP * 2 \f]
 
-  \f$ sRPM \f$ is shaft rpm,
+    where:
 
-  \f$ eRPM \f$ is electrical rpm,
+    \f$ sRPM \f$ is shaft rpm,
 
-  and \f$ MP \f$ is the number of magnetic poles in the motor.
+    \f$ eRPM \f$ is electrical rpm,
 
-  @see uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
+    and \f$ MP \f$ is the number of magnetic poles in the motor.
+
+    @see uint16_t CastleLinkLiveLib::getShaftRPM(uint16_t eRPM, uint8_t motorPoles)
   */
+  float RPM;
   float BECvoltage;      /**< \brief Voltage at the BEC (Battery Eliminator Circuit) in Volts */
   float BECcurrent;      /**< \brief Current drawn by servos and any other device powered by the BEC in Amperes */
   float temperature;     /**< \brief Temperature of the ESC in degree Celsius */
@@ -424,9 +440,9 @@ typedef struct castle_esc_data_struct {
     It's your responsibility to keep things safe. Developers of this software
     can't be considered liable for any possible damage will result from its use.
     
-    \version 0.1.0
+    \version 0.1.1
     \author Matteo Piscitelli
-    \date 2012
+    \date 2012, 2013
     \copyright Matteo Piscitelli    
  
 */
@@ -474,8 +490,8 @@ class CastleLinkLiveLib {
    
    /** \brief Starts the library indicating the number of ESC connected and the arduino pin that will
        be used to read throttle signal.
-       @param [in] nESC the number of ESC(s) connected (up to 2)
-       @param [in] throttlePinNumber any valid Arduino pin (except the already used ones) or GENERATE_THROTTLE 
+       @param[in] nESC the number of ESC(s) connected (up to 2)
+       @param[in] throttlePinNumber any valid Arduino pin (except the already used ones) or GENERATE_THROTTLE
        macro to let the library generate the throttle signal itself.
        @see GENERATE_THROTTLE
    */
@@ -593,8 +609,8 @@ class CastleLinkLiveLib {
 
    /** \brief Converts electrical RPM in shaft RPM from motor poles number
 
-	   @param eRPM [in] electrical RPM, from a CASTLE_ESC_DATA structure
-	   @param motorPoles [in] number of magnetic poles in the motor
+	   @param[in] eRPM electrical RPM, from a CASTLE_ESC_DATA structure
+	   @param[in] motorPoles number of magnetic poles in the motor
 	   @return shaft RPM
 
    	   @see CASTLE_ESC_DATA
