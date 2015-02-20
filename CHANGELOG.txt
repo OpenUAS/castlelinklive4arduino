@@ -1,0 +1,17 @@
+CHANGELOG
+
+0.1.1
+***********************************
+First working release
+
+
+0.1.2
+***********************************
+* main library:
+  - Corrected a bug where second ESC pin (D3 for ATmega128/328) is
+    toggled but there's only one ESC.
+  - Some minor comments and docs clean-up
+* CastleLinkLiveSimple example sketch:
+  - Added commands for arm/disarm.
+  - Renamed main sketch file in .ino
+
