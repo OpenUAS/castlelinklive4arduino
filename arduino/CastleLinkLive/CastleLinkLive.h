@@ -101,7 +101,7 @@
 
 
 /** \cond */
-#define LIBRARY_VERSION 0.1.2
+#define LIBRARY_VERSION 0.1.1
 /** \endcond */
 
 /** \anchor constants */
@@ -113,9 +113,8 @@
     to indicate that library itself has to generate throttle signal
 
     This is also the default throttlePinNumber value if you call begin version with one parameter
-    only, or with no parameters at all.
+    only.
 
-    @see CastleLinkLiveLib::begin()
     @see CastleLinkLiveLib::begin(uint8_t nESC)
     @see CastleLinkLiveLib::begin(uint8_t nESC, int throttlePinNumber)
 */
@@ -441,9 +440,9 @@ typedef struct castle_esc_data_struct {
     It's your responsibility to keep things safe. Developers of this software
     can't be considered liable for any possible damage will result from its use.
     
-    \version 0.1.2
+    \version 0.1.1
     \author Matteo Piscitelli
-    \date 2012, 2013, 2014, 2015
+    \date 2012, 2013
     \copyright Matteo Piscitelli    
  
 */
@@ -554,7 +553,7 @@ class CastleLinkLiveLib {
        void throttleEvent(boolean valid)
        \endcode
        
-       The only boolean parameter reports if throttle is present and valid or not.
+       The only boolean parameters reports if throttle is present and valid or not.
 
 	   Will be called by an ISR (interrupt service routine).
 
@@ -564,7 +563,7 @@ class CastleLinkLiveLib {
    void attachThrottlePresenceHandler(void (*ptHandler) (uint8_t) );
    
 
-   /** \brief Attach a program-defined function to be called by the library whenever 
+   /** \brief Attach a program-defined function to be called by the library whenever the
        it receives new telemetry data from ESC.
 
 	   Function prototype is :
@@ -607,7 +606,6 @@ class CastleLinkLiveLib {
        @see throttleArm
    */
    void setLed(uint8_t on);
-#endif
 
    /** \brief Converts electrical RPM in shaft RPM from motor poles number
 
@@ -619,6 +617,7 @@ class CastleLinkLiveLib {
    	   @see CastleLinkLiveLib::getData(uint8_t index, CASTLE_ESC_DATA *data)
    */
    uint16_t getShaftRPM(uint16_t eRPM, uint8_t motorPoles);
+#endif
 
   private:
    int _throttlePinNumber;

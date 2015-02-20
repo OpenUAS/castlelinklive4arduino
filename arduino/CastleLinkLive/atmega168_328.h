@@ -82,7 +82,7 @@
 
 void configEscINTs(uint8_t nescs) {
 	EICRA |= _BV(ISC01);
-	if (nescs == 2)
+	if (nescs == 1)
 		EICRA |= _BV(ISC11);
 }
 
