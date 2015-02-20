@@ -1,0 +1,17 @@
+CastleLinkLive			KEYWORD1
+
+init				KEYWORD2
+
+begin				KEYWORD2
+
+setLed				KEYWORD2
+
+throttleArm			KEYWORD2
+
+throttleDisarm			KEYWORD2
+
+setThrottle			KEYWORD2
+
+getData				KEYWORD2
+
+attachThrottlePresenceHandler	KEYWORD2
