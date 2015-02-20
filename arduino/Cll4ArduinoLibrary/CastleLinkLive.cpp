@@ -66,7 +66,6 @@
 #error "MCU not supported"
 #endif
 
-
 /***************************************
  * TIMER macros
  ***************************************/
@@ -148,7 +147,6 @@ uint8_t throttlePinMask;
 uint16_t throttlePulseHighTicks;
 uint16_t throttlePulseLowTicks;
 
-uint8_t esc1PinMask;
 uint8_t escPinsHighMask;
 uint8_t escPinsLowMask;
 
@@ -244,7 +242,10 @@ uint8_t CastleLinkLiveLib::_setThrottlePinRegisters() {
 
 #if defined (__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
   if (_throttlePinNumber >= 0 && _throttlePinNumber <= 7) { //0-7 => PORTD: PCINT16-23
-    _pcint = PCINT16 + _throttlePinNumber;
+	if (_throttlePinNumber == 2 || _throttlePinNumber == 3)
+		return false;
+	else
+		_pcint = PCINT16 + _throttlePinNumber;
   } else if (_throttlePinNumber >= 8 && _throttlePinNumber <= 13) { //8-13 => PORTB: PCINT0-5 {
     _pcint = PCINT0 + (_throttlePinNumber - 8);
   } else if (_throttlePinNumber >= A0 && _throttlePinNumber <= A5) { //A0-A5 => PORTC: PCINT8-13
@@ -479,6 +480,7 @@ void CastleLinkLiveLib::setThrottle(uint8_t throttle) {
 #if (LED_DISABLE == 0)
   ledMod = 100 - _throttle + 1;
 #endif
+
 }
 
 //! [ESC data calculation details]
@@ -720,18 +722,16 @@ ISR(TIMER_COMPA_ISR) {
       LED_OFF();
   }
 #endif
-
-
   
 }
 
 // generated throttle interrupts
 ISR(TIMER_COMPB_ISR) {
-  ESC_TOGGLE_PORT |= escPinsHighMask; //toggle esc pins
   TIMER_CLEAR(); //clear timer
-  
-  if ( ! (ESC_WRITE_PORT & escPinsHighMask) ) { //throttle out is LOW
-    TIMER_SET_COMPB(throttlePulseHighTicks); //set COMPB to generate throttle pulse throttleTicks-long
+
+  if ( (ESC_WRITE_PORT & escPinsHighMask) ) { //throttle out is HIGH: pulse start
+	ESC_WRITE_PORT &= escPinsLowMask; //set throttle out LOW
+    TIMER_SET_COMPB(throttlePulseHighTicks); //set COMPB to trigger again after pulse-long ticks
 
 #if (LED_DISABLE == 0)
     ledCnt++;
@@ -741,9 +741,13 @@ ISR(TIMER_COMPB_ISR) {
     else
       LED_OFF();
 #endif
-  } else { //throttle out is HIGH
-    TIMER_SET_COMPB(throttlePulseLowTicks);
- 
+
+  } else { //throttle out is LOW: pulse end
+
+	ESC_WRITE_PORT |= escPinsHighMask; //set throttle out HIGH
+    TIMER_SET_COMPB(throttlePulseLowTicks); //set COMPB to trigger again after remaining period time elapses
+
+	//prepare ESC pins to wait for data tick
     ESC_DDR &= escPinsLowMask; //set esc pins as inputs
 #ifndef DISABLE_ALL_PULLUPS  
     ESC_WRITE_PORT &= escPinsLowMask; //write LOW to esc pins to disable pullups if not globally disabled
@@ -753,9 +757,10 @@ ISR(TIMER_COMPB_ISR) {
 
     throttleFailCnt++; //increase throttle failure counter: 
   }
-  
+
+  //check for throttle failure
   if (throttleFailCnt >= MAX_NO_THROTTLE_GEN) {
-    TIMER_DISABLE_COMPB(); //disable interrupt generation
+    TIMER_DISABLE_COMPB(); //disable interrupt generation (stops generating throttle signal)
     ESC_WRITE_PORT |= escPinsHighMask; //esc pins high!
     ESC_DDR |= escPinsHighMask; //esc pins as output!
     throttleNotPresent();

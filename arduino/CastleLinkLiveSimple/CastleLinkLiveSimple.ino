@@ -175,6 +175,10 @@ void setup() {
 
 void loop() {
   /* reading commands from serial port:
+   * - A:           arm the library (start relaying/generating
+   *                throttle signal)
+   * - D:           disarm the library (stop relaying/generating 
+                    throttle signal)
    * - T<throttle>: set throttle to <throttle> (0-100). 
    *                Example: T67 -> will set throttle at 67%
    *                (only valid in software throttle mode)
@@ -219,6 +223,10 @@ void loop() {
                  Serial.println("Software throttle started");
                else 
                  Serial.println("Software throttle stopped");
+             } else if (buffer[0] == 'A') {
+                 CastleLinkLive.throttleArm();
+             } else if (buffer[0] == 'D') {
+                 CastleLinkLive.throttleDisarm();
              } else if (buffer[0] == 'R') {
                rawData = ! rawData; 
                if (rawData) 
